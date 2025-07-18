@@ -36,7 +36,7 @@ export default function ChatBot({ isOpen, onClose }: ChatBotProps) {
     phone: '',
     reason: ''
   });
-  
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -289,7 +289,7 @@ export default function ChatBot({ isOpen, onClose }: ChatBotProps) {
                 )}
               >
                 <p className="text-sm">{message.content}</p>
-                
+
                 {/* Options */}
                 {message.options && (
                   <div className="mt-3 space-y-2">
