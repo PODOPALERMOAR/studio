@@ -1,0 +1,48 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Usuarios - cada usuario puede leer/escribir sus propios datos
+    match /users/{userId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && request.auth.uid == userId;
+      
+      // Colecciones anidadas de usuario
+      match /appointments/{document=**} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+    }
+    
+    // Pacientes - accesibles para usuarios autenticados
+    match /patients/{patientId} {
+      allow read, write: if request.auth != null;
+      
+      // Historial médico de pacientes
+      match /medical-history/{document=**} {
+        allow read, write: if request.auth != null;
+      }
+    }
+    
+    // Turnos/citas - accesibles para usuarios autenticados
+    match /appointments/{appointmentId} {
+      allow read, write: if request.auth != null;
+    }
+    
+    // Contenido público del blog
+    match /blog/{postId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+    
+    // Configuración pública
+    match /config/{configId} {
+      allow read: if true;
+      allow write: if false;
+    }
+    
+    // Regla temporal para desarrollo
+    match /{document=**} {
+      allow read, write: if request.time < timestamp.date(2025, 8, 17);
+    }
+  }
+}

@@ -9,6 +9,9 @@ import { ArrowRight, Gift, Sparkles, User } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
+import { useState } from 'react';
+import { db } from '@/lib/firebase';
+import { collection, addDoc, getDocs } from 'firebase/firestore';
 
 const quickActionsConfig = [
     { title: "Asistente Personal", subtitle: "Panel de pacientes", icon: User, href: "/dashboard/patient", id: "panel" },
@@ -18,6 +21,41 @@ const quickActionsConfig = [
 
 export default function Home() {
   const { toast } = useToast();
+  const [firebaseStatus, setFirebaseStatus] = useState('No probado');
+
+  const testFirebase = async () => {
+    try {
+      setFirebaseStatus('Probando...');
+      
+      // Intentar leer una colección
+      const querySnapshot = await getDocs(collection(db, 'test'));
+      const docs = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      
+      setFirebaseStatus(`✅ Conexión exitosa! ${docs.length} documentos encontrados`);
+      
+      // Agregar un documento de prueba
+      await addDoc(collection(db, 'test'), {
+        message: 'Hola desde Foot Haven!',
+        timestamp: new Date(),
+        test: true
+      });
+      
+      toast({
+        title: "Firebase conectado",
+        description: "La conexión con Firebase funciona correctamente",
+      });
+      
+    } catch (error) {
+      console.error('Error:', error);
+      setFirebaseStatus('❌ Error: ' + (error as Error).message);
+      toast({
+        title: "Error de conexión",
+        description: "No se pudo conectar con Firebase",
+        variant: "destructive"
+      });
+    }
+  };
+
   return (
     <div className="flex flex-col min-h-screen bg-background">
       <Header />
@@ -53,7 +91,7 @@ export default function Home() {
                     className="bg-primary text-primary-foreground hover:bg-primary/90 w-full max-w-[180px] sm:w-auto mt-3 sm:mt-0 flex-shrink-0"
                     asChild
                   >
-                    <Link href="/login">
+                    <Link href="/turnos">
                         Buscar Turno <ArrowRight className="ml-1.5 h-4 w-4 sm:ml-2 sm:h-5 sm:w-5" />
                     </Link>
                   </Button>
@@ -83,6 +121,17 @@ export default function Home() {
                   ))}
                 </div>
             </div>
+            
+            {/* Test Firebase - Solo para desarrollo */}
+            <Card className="p-6 mt-8 max-w-md mx-auto">
+              <h3 className="text-lg font-bold mb-4">Test Firebase Connection</h3>
+              <div className="space-y-4">
+                <p className="text-sm">{firebaseStatus}</p>
+                <Button onClick={testFirebase} size="sm">
+                  Probar Firebase
+                </Button>
+              </div>
+            </Card>
         </div>
       </main>
       <Footer />
