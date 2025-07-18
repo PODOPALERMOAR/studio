@@ -1,19 +1,21 @@
-import Link from "next/link";
+import Link from 'next/link';
+import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
 
 export default function Footer() {
-    return (
-        <footer className="border-t">
-            <div className="container flex flex-col items-center justify-between gap-4 py-10 md:h-24 md:flex-row md:py-0">
-                <div className="flex flex-col items-center gap-4 px-8 md:flex-row md:gap-2 md:px-0">
-                    <p className="text-center text-sm leading-loose text-muted-foreground md:text-left">
-                        © {new Date().getFullYear()} Foot Haven. Todos los derechos reservados.
-                    </p>
-                </div>
-                <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                    <Link href="/terms" className="hover:text-primary">Términos de Servicio</Link>
-                    <Link href="/privacy" className="hover:text-primary">Política de Privacidad</Link>
-                </div>
-            </div>
-        </footer>
-    )
+  return (
+    <footer className={cn(
+      "py-8",
+      "border-t border-solid border-border bg-background"
+    )}>
+      <nav className="container mx-auto px-4 sm:px-10 flex flex-wrap justify-center items-center gap-x-6 gap-y-3 md:gap-x-9">
+        <Link href="/privacy-policy" className="text-sm font-medium leading-normal text-muted-foreground hover:text-primary transition-colors">Privacidad</Link>
+        <Link href="/terms-conditions" className="text-sm font-medium leading-normal text-muted-foreground hover:text-primary transition-colors">Términos</Link>
+      </nav>
+      <div className="text-center text-xs text-muted-foreground mt-6 flex items-center justify-center">
+        <span>&copy; {new Date().getFullYear()} Podopalermo</span>
+        <Badge variant="outline" className="ml-2 border-primary/30 text-primary bg-primary/10 px-1.5 py-0.5 text-[10px] font-normal">Beta</Badge>
+      </div>
+    </footer>
+  );
 }
