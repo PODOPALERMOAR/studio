@@ -17,8 +17,8 @@ export default {
     },
     extend: {
       fontFamily: {
-        body: ['Alegreya', 'serif'],
-        headline: ['Alegreya', 'serif'],
+        body: ['"Nunito Sans"', 'sans-serif'],
+        headline: ['"Nunito Sans"', 'sans-serif'],
         code: ['monospace'],
       },
       colors: {
