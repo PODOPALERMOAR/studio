@@ -16,9 +16,9 @@ import { useToast } from '@/hooks/use-toast';
 const formSchema = z.object({
   voucher: z
     .custom<FileList>()
-    .refine((files) => files?.length === 1, 'Voucher PDF is required.')
-    .refine((files) => files?.[0]?.type === 'application/pdf', 'Only PDF files are allowed.')
-    .refine((files) => files?.[0]?.size <= 5 * 1024 * 1024, 'File size must be less than 5MB.'),
+    .refine((files) => files?.length === 1, 'El voucher en PDF es obligatorio.')
+    .refine((files) => files?.[0]?.type === 'application/pdf', 'Solo se permiten archivos PDF.')
+    .refine((files) => files?.[0]?.size <= 5 * 1024 * 1024, 'El tamaño del archivo debe ser menor a 5MB.'),
 });
 
 function fileToDataUri(file: File): Promise<string> {
@@ -52,16 +52,16 @@ export default function VoucherValidator() {
 
         if (result.isValid) {
             toast({
-                title: 'Voucher Validated!',
-                description: `Patient: ${result.patientName}. Your appointment will be scheduled for ${result.appointmentDate}.`,
+                title: '¡Voucher Validado!',
+                description: `Paciente: ${result.patientName}. Tu turno será agendado para el ${result.appointmentDate}.`,
             });
         }
     } catch (error) {
       console.error(error);
       toast({
         variant: 'destructive',
-        title: 'An error occurred',
-        description: 'Failed to validate the voucher. Please try again.',
+        title: 'Ocurrió un error',
+        description: 'No se pudo validar el voucher. Por favor, intentá de nuevo.',
       });
     } finally {
       setLoading(false);
@@ -71,9 +71,9 @@ export default function VoucherValidator() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Validate and Upload Voucher</CardTitle>
+        <CardTitle>Validar y Subir Voucher</CardTitle>
         <CardDescription>
-          Upload your PDF voucher and our AI will validate it to schedule your appointment automatically.
+          Subí tu voucher en PDF y nuestra IA lo validará para agendar tu turno automáticamente.
         </CardDescription>
       </CardHeader>
       <Form {...form}>
@@ -100,24 +100,24 @@ export default function VoucherValidator() {
             <CardFooter className="flex-col items-start gap-4">
                 <Button type="submit" disabled={loading} className="w-full">
                     {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    Validate Voucher
+                    Validar Voucher
                 </Button>
                 {validationResult && (
                     <div className="w-full">
                         {validationResult.isValid ? (
                             <Alert variant="default">
                                 <CheckCircle className="h-4 w-4" />
-                                <AlertTitle>Validation Successful</AlertTitle>
+                                <AlertTitle>Validación Exitosa</AlertTitle>
                                 <AlertDescription>
-                                    Patient: {validationResult.patientName}. Appt. date: {validationResult.appointmentDate}.
+                                    Paciente: {validationResult.patientName}. Fecha de turno: {validationResult.appointmentDate}.
                                 </AlertDescription>
                             </Alert>
                         ) : (
                             <Alert variant="destructive">
                                 <XCircle className="h-4 w-4" />
-                                <AlertTitle>Validation Failed</AlertTitle>
+                                <AlertTitle>Validación Fallida</AlertTitle>
                                 <AlertDescription>
-                                    The provided voucher is invalid. Please check the document and try again.
+                                    El voucher proporcionado no es válido. Por favor, revisá el documento y volvé a intentarlo.
                                 </AlertDescription>
                             </Alert>
                         )}

@@ -9,19 +9,19 @@ import {
 import { Badge } from "@/components/ui/badge"
 
 const recentAppointments = [
-    { name: "John Doe", date: "2024-08-15", status: "Confirmed" },
-    { name: "Jane Smith", date: "2024-08-15", status: "Confirmed" },
-    { name: "Peter Jones", date: "2024-08-14", status: "Completed" },
-    { name: "Mary Williams", date: "2024-08-14", status: "Canceled" },
-    { name: "David Brown", date: "2024-08-13", status: "Completed" },
-    { name: "Sarah Miller", date: "2024-08-13", status: "Completed" },
+    { name: "John Doe", date: "2024-08-15", status: "Confirmado" },
+    { name: "Jane Smith", date: "2024-08-15", status: "Confirmado" },
+    { name: "Peter Jones", date: "2024-08-14", status: "Completado" },
+    { name: "Mary Williams", date: "2024-08-14", status: "Cancelado" },
+    { name: "David Brown", date: "2024-08-13", status: "Completado" },
+    { name: "Sarah Miller", date: "2024-08-13", status: "Completado" },
 ];
 
 export default function RecentAppointments() {
     const getBadgeVariant = (status: string) => {
-        if (status === 'Confirmed') return 'default';
-        if (status === 'Completed') return 'secondary';
-        if (status === 'Canceled') return 'destructive';
+        if (status === 'Confirmado') return 'default';
+        if (status === 'Completado') return 'secondary';
+        if (status === 'Cancelado') return 'destructive';
         return 'outline';
     }
 
@@ -29,9 +29,9 @@ export default function RecentAppointments() {
         <Table>
             <TableHeader>
                 <TableRow>
-                    <TableHead>Patient</TableHead>
-                    <TableHead>Date</TableHead>
-                    <TableHead className="text-right">Status</TableHead>
+                    <TableHead>Paciente</TableHead>
+                    <TableHead>Fecha</TableHead>
+                    <TableHead className="text-right">Estado</TableHead>
                 </TableRow>
             </TableHeader>
             <TableBody>

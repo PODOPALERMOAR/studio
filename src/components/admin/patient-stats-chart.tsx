@@ -4,21 +4,21 @@ import { Bar, BarChart, XAxis, YAxis, CartesianGrid, Tooltip } from "recharts"
 import { ChartContainer, ChartTooltipContent, ChartConfig } from "@/components/ui/chart";
 
 const chartData = [
-  { month: "January", appointments: 186, cancellations: 80 },
-  { month: "February", appointments: 305, cancellations: 200 },
-  { month: "March", appointments: 237, cancellations: 120 },
-  { month: "April", appointments: 273, cancellations: 190 },
-  { month: "May", appointments: 209, cancellations: 130 },
-  { month: "June", appointments: 214, cancellations: 140 },
+  { month: "Enero", appointments: 186, cancellations: 80 },
+  { month: "Febrero", appointments: 305, cancellations: 200 },
+  { month: "Marzo", appointments: 237, cancellations: 120 },
+  { month: "Abril", appointments: 273, cancellations: 190 },
+  { month: "Mayo", appointments: 209, cancellations: 130 },
+  { month: "Junio", appointments: 214, cancellations: 140 },
 ]
 
 const chartConfig = {
     appointments: {
-      label: "Appointments",
+      label: "Turnos",
       color: "hsl(var(--primary))",
     },
     cancellations: {
-      label: "Cancellations",
+      label: "Cancelaciones",
       color: "hsl(var(--destructive))",
     },
 } satisfies ChartConfig

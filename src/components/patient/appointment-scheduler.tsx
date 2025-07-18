@@ -25,9 +25,9 @@ import {
 
 
 const formSchema = z.object({
-  doctorId: z.string().min(1, 'Please select a doctor.'),
-  appointmentDurationMinutes: z.coerce.number().min(15, 'Duration must be at least 15 minutes.'),
-  date: z.date({ required_error: 'A date is required.' }),
+  doctorId: z.string().min(1, 'Por favor, seleccioná un doctor.'),
+  appointmentDurationMinutes: z.coerce.number().min(15, 'La duración debe ser de al menos 15 minutos.'),
+  date: z.date({ required_error: 'La fecha es obligatoria.' }),
 });
 
 export default function AppointmentScheduler() {
@@ -57,16 +57,16 @@ export default function AppointmentScheduler() {
         setSuggestedTimes(result.availableTimes);
       } else {
         toast({
-          title: 'No available times',
-          description: 'There are no available slots for the selected criteria. Please try another date or time.',
+          title: 'No hay turnos disponibles',
+          description: 'No hay horarios disponibles para el criterio seleccionado. Por favor, probá con otra fecha u hora.',
         });
       }
     } catch (error) {
       console.error(error);
       toast({
         variant: 'destructive',
-        title: 'An error occurred',
-        description: 'Failed to fetch appointment times. Please try again.',
+        title: 'Ocurrió un error',
+        description: 'No se pudieron obtener los horarios. Por favor, intentá de nuevo.',
       });
     } finally {
       setLoading(false);
@@ -79,8 +79,8 @@ export default function AppointmentScheduler() {
     // Simulate API call to confirm
     setTimeout(() => {
         toast({
-            title: "Appointment Confirmed!",
-            description: `Your appointment is set for ${format(form.getValues('date'), 'PPP')} at ${selectedTime}.`,
+            title: "¡Turno Confirmado!",
+            description: `Tu turno está agendado para el ${format(form.getValues('date'), 'PPP')} a las ${selectedTime}.`,
         });
         setLoading(false);
         setSuggestedTimes([]);
@@ -92,9 +92,9 @@ export default function AppointmentScheduler() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Schedule a New Appointment</CardTitle>
+        <CardTitle>Agendar un Nuevo Turno</CardTitle>
         <CardDescription>
-          Fill in the details below and we'll suggest available times for you.
+          Completá los detalles a continuación y te sugeriremos horarios disponibles.
         </CardDescription>
       </CardHeader>
       <Form {...form}>
@@ -106,11 +106,11 @@ export default function AppointmentScheduler() {
                 name="doctorId"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Doctor</FormLabel>
+                    <FormLabel>Doctor/a</FormLabel>
                      <Select onValueChange={field.onChange} defaultValue={field.value}>
                         <FormControl>
                           <SelectTrigger>
-                            <SelectValue placeholder="Select a doctor" />
+                            <SelectValue placeholder="Seleccioná un/a doctor/a" />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
@@ -127,7 +127,7 @@ export default function AppointmentScheduler() {
                 name="appointmentDurationMinutes"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Duration (minutes)</FormLabel>
+                    <FormLabel>Duración (minutos)</FormLabel>
                     <FormControl>
                       <Input type="number" {...field} />
                     </FormControl>
@@ -140,7 +140,7 @@ export default function AppointmentScheduler() {
                   name="date"
                   render={({ field }) => (
                     <FormItem className="flex flex-col pt-2">
-                      <FormLabel>Date</FormLabel>
+                      <FormLabel>Fecha</FormLabel>
                       <Popover>
                         <PopoverTrigger asChild>
                           <FormControl>
@@ -154,7 +154,7 @@ export default function AppointmentScheduler() {
                               {field.value ? (
                                 format(field.value, "PPP")
                               ) : (
-                                <span>Pick a date</span>
+                                <span>Elegí una fecha</span>
                               )}
                               <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                             </Button>
@@ -179,12 +179,12 @@ export default function AppointmentScheduler() {
             </div>
             <Button type="submit" disabled={loading}>
               {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Find Available Times
+              Buscar Horarios Disponibles
             </Button>
           
             {suggestedTimes.length > 0 && (
               <div className="mt-6 pt-6 border-t">
-                <h3 className="text-lg font-medium mb-4">Available Slots for {format(form.getValues('date'), 'PPP')}:</h3>
+                <h3 className="text-lg font-medium mb-4">Horarios disponibles para el {format(form.getValues('date'), 'PPP')}:</h3>
                 <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
                     {suggestedTimes.map(time => (
                         <Button key={time} variant={selectedTime === time ? 'default' : 'outline'} onClick={() => setSelectedTime(time)}>
@@ -199,7 +199,7 @@ export default function AppointmentScheduler() {
             <CardFooter>
                 <Button onClick={handleConfirmAppointment} disabled={loading} className="w-full" size="lg">
                     {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    Confirm Appointment for {selectedTime}
+                    Confirmar Turno para las {selectedTime}
                 </Button>
             </CardFooter>
           )}

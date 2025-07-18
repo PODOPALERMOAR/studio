@@ -6,12 +6,12 @@ import VoucherValidator from "@/components/patient/voucher-validator";
 export default function PatientDashboard() {
   return (
     <div className="space-y-6">
-      <h1 className="text-3xl font-bold font-headline">Patient Dashboard</h1>
+      <h1 className="text-3xl font-bold font-headline">Panel de Paciente</h1>
       <Tabs defaultValue="schedule" className="w-full">
         <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="schedule">Book Appointment</TabsTrigger>
-          <TabsTrigger value="appointments">My Appointments</TabsTrigger>
-          <TabsTrigger value="voucher">Upload Voucher</TabsTrigger>
+          <TabsTrigger value="schedule">Agendar Turno</TabsTrigger>
+          <TabsTrigger value="appointments">Mis Turnos</TabsTrigger>
+          <TabsTrigger value="voucher">Subir Voucher</TabsTrigger>
         </TabsList>
         <TabsContent value="schedule" className="mt-4">
           <AppointmentScheduler />

@@ -9,9 +9,9 @@ import { Sheet, SheetContent, SheetTrigger } from '../ui/sheet';
 import { useState } from 'react';
 
 const navLinks = [
-  { href: '/', label: 'Home' },
+  { href: '/', label: 'Inicio' },
   { href: '/blog', label: 'Blog' },
-  { href: '/marketplace', label: 'Marketplace' },
+  { href: '/marketplace', label: 'Tienda' },
 ];
 
 export default function Header() {
@@ -41,14 +41,14 @@ export default function Header() {
         </nav>
         <div className="flex flex-1 items-center justify-end space-x-4">
           <Button asChild>
-            <Link href="/login">Login</Link>
+            <Link href="/login">Ingresar</Link>
           </Button>
           <div className="md:hidden">
             <Sheet open={isOpen} onOpenChange={setIsOpen}>
               <SheetTrigger asChild>
                 <Button variant="ghost" size="icon">
                   <Menu className="h-5 w-5" />
-                  <span className="sr-only">Toggle Menu</span>
+                  <span className="sr-only">Abrir Menú</span>
                 </Button>
               </SheetTrigger>
               <SheetContent side="right" className="w-[300px] sm:w-[400px]">

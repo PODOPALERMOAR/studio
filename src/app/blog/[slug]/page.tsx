@@ -23,7 +23,7 @@ export default function BlogPostPage({ params }: { params: { slug: string } }) {
               {post.title}
             </h1>
             <p className="text-muted-foreground">
-              Posted by {post.author} on {post.date}
+              Publicado por {post.author} el {post.date}
             </p>
           </header>
           <Image

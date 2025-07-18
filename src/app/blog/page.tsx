@@ -14,20 +14,20 @@ export default function BlogPage() {
       <Header />
       <main className="flex-grow container mx-auto py-10 px-4">
         <div className="text-center mb-10">
-          <h1 className="text-4xl font-bold font-headline">Foot Haven Blog</h1>
+          <h1 className="text-4xl font-bold font-headline">Blog de Foot Haven</h1>
           <p className="text-muted-foreground mt-2">
-            Insights and advice from our podiatry experts.
+            Consejos y artículos de nuestros podólogos expertos.
           </p>
         </div>
 
         <div className="mb-8 flex flex-col md:flex-row gap-4">
             <div className="relative flex-grow">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                <Input placeholder="Search articles..." className="pl-10" />
+                <Input placeholder="Buscar artículos..." className="pl-10" />
             </div>
             <div className="flex items-center gap-2 overflow-x-auto pb-2">
                 {blogCategories.map(category => (
-                    <Button key={category} variant={category === 'All' ? 'default' : 'outline'} className="shrink-0">
+                    <Button key={category} variant={category === 'Todos' ? 'default' : 'outline'} className="shrink-0">
                         {category}
                     </Button>
                 ))}
@@ -54,7 +54,7 @@ export default function BlogPage() {
                   <CardDescription>{post.excerpt}</CardDescription>
                 </CardContent>
                 <CardFooter className="p-6 pt-0 text-sm text-muted-foreground">
-                  <span>By {post.author} on {post.date}</span>
+                  <span>Por {post.author} el {post.date}</span>
                 </CardFooter>
               </Card>
             </Link>

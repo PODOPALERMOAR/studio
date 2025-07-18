@@ -3,10 +3,10 @@ import { DollarSign, Users, Calendar, Ban } from "lucide-react";
 
 export default function KpiCards() {
     const kpis = [
-        { title: "Total Revenue", value: "$45,231.89", icon: DollarSign, change: "+20.1% from last month" },
-        { title: "Total Appointments", value: "+2350", icon: Calendar, change: "+180.1% from last month" },
-        { title: "Active Patients", value: "+120", icon: Users, change: "+19% from last month" },
-        { title: "Cancellations", value: "32", icon: Ban, change: "-2% from last month" },
+        { title: "Ingresos Totales", value: "$45,231.89", icon: DollarSign, change: "+20.1% desde el mes pasado" },
+        { title: "Turnos Totales", value: "+2350", icon: Calendar, change: "+180.1% desde el mes pasado" },
+        { title: "Pacientes Activos", value: "+120", icon: Users, change: "+19% desde el mes pasado" },
+        { title: "Cancelaciones", value: "32", icon: Ban, change: "-2% desde el mes pasado" },
     ];
 
     return (

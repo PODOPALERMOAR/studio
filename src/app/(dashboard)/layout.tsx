@@ -9,9 +9,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const pathname = usePathname();
 
   const menuItems = [
-    { href: '/dashboard/patient', label: 'Patient Panel', icon: User },
-    { href: '/dashboard/admin', label: 'Admin Panel', icon: LayoutDashboard },
-    { href: '/marketplace', label: 'Marketplace', icon: ShoppingCart },
+    { href: '/dashboard/patient', label: 'Panel de Paciente', icon: User },
+    { href: '/dashboard/admin', label: 'Panel de Admin', icon: LayoutDashboard },
+    { href: '/marketplace', label: 'Tienda', icon: ShoppingCart },
     { href: '/blog', label: 'Blog', icon: Newspaper },
   ];
 
@@ -44,7 +44,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <SidebarMenuButton asChild>
                 <Link href="/">
                   <LogOut />
-                  <span>Logout</span>
+                  <span>Cerrar Sesión</span>
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
@@ -55,7 +55,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <header className="flex h-14 items-center gap-4 border-b bg-background px-6 sticky top-0 z-40">
             <SidebarTrigger className="md:hidden" />
             <h2 className="text-lg font-semibold font-headline">
-                {menuItems.find(item => pathname.startsWith(item.href))?.label || 'Dashboard'}
+                {menuItems.find(item => pathname.startsWith(item.href))?.label || 'Panel'}
             </h2>
         </header>
         <main className="p-6">{children}</main>
