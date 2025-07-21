@@ -1,43 +1,37 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { X, Send, MessageCircle, Calendar, Clock, User, Phone } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { LoadingDots } from '@/components/common/LoadingDots';
-// import { bookingConversation } from '@/ai/flows/booking-conversation';
-
-interface Message {
-  id: string;
-  type: 'user' | 'bot';
-  content: string;
-  timestamp: Date;
-  options?: Array<{
-    label: string;
-    action: string;
-    data?: any;
-  }>;
-}
+import { Card } from '@/components/ui/card';
+import { MessageCircle, Send, X, Bot, User, ExternalLink, UploadCloud } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useState } from 'react';
+import { useChatBot } from './ChatBotContext';
 
 interface ChatBotProps {
-  isOpen: boolean;
-  onClose: () => void;
+  embedded?: boolean;
 }
 
-export default function ChatBot({ isOpen, onClose }: ChatBotProps) {
-  const [messages, setMessages] = useState<Message[]>([]);
+export default function ChatBot({ embedded = false }: ChatBotProps) {
+  const [isOpen, setIsOpen] = useState(false);
   const [inputValue, setInputValue] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [currentStep, setCurrentStep] = useState<'greeting' | 'preference' | 'slots' | 'details' | 'payment' | 'confirmed'>('greeting');
-  const [userInfo, setUserInfo] = useState({
-    name: '',
-    phone: '',
-    reason: ''
-  });
-
+  const [isFileUploadMode, setIsFileUploadMode] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  
+  // Usar el contexto global
+  const { 
+    messages, 
+    conversationState, 
+    setConversationState, 
+    isLoading, 
+    setIsLoading, 
+    addMessage,
+    isInitialized,
+    setIsInitialized
+  } = useChatBot();
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -47,200 +41,219 @@ export default function ChatBot({ isOpen, onClose }: ChatBotProps) {
     scrollToBottom();
   }, [messages]);
 
+  const callBookingAPI = async (action: string, metadata?: any, userInput?: string, paymentProof?: string) => {
+    try {
+      const response = await fetch('/api/booking/conversation', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action,
+          metadata,
+          userInput,
+          paymentProof,
+          userInfo: conversationState.userInfo
+        }),
+      });
+
+      const result = await response.json();
+      
+      if (!result.success) {
+        throw new Error(result.error || 'Error en la API');
+      }
+
+      return result.data;
+    } catch (error: any) {
+      console.error('Error calling booking API:', error);
+      throw error;
+    }
+  };
+
+  const handleSendMessage = async (message?: string, action?: string, metadata?: any) => {
+    const messageToSend = message || inputValue.trim();
+    
+    // Si hay un mensaje de texto, agregarlo como mensaje del usuario
+    if (messageToSend && !action) {
+      addMessage(messageToSend, false);
+      setInputValue('');
+    }
+
+    // Si es una acción de botón, mostrar el label como mensaje del usuario
+    if (action && message) {
+      addMessage(message, false);
+    }
+
+    setIsLoading(true);
+
+    try {
+      // Determinar la acción a enviar
+      let actionToSend = action || 'userMessage';
+      let metadataToSend = metadata || conversationState.metadata || {};
+      
+      // Manejar acciones especiales
+      if (action === 'openWhatsApp' || action === 'contactWhatsApp') {
+        const phone = metadata?.phone || '5491167437969'; // Número de Cecilia por defecto
+        const whatsappUrl = `https://wa.me/${phone}?text=Hola, me gustaría agendar un turno de podología`;
+        window.open(whatsappUrl, '_blank');
+        setIsLoading(false);
+        return;
+      }
+
+      // Manejar acciones de recolección de datos de usuario
+      if (action === 'collectUserInfo') {
+        // Actualizar la información del usuario en el estado de conversación
+        if (metadata?.step === 'firstName') {
+          setConversationState(prev => ({
+            ...prev,
+            userInfo: {
+              ...prev.userInfo,
+              name: messageToSend
+            }
+          }));
+        } else if (metadata?.step === 'phone') {
+          setConversationState(prev => ({
+            ...prev,
+            userInfo: {
+              ...prev.userInfo,
+              phone: messageToSend
+            }
+          }));
+        } else if (metadata?.step === 'reason') {
+          setConversationState(prev => ({
+            ...prev,
+            userInfo: {
+              ...prev.userInfo,
+              reason: messageToSend
+            }
+          }));
+        }
+      }
+
+      // Manejar subida de comprobante de pago
+      let paymentProofData = undefined;
+      if (action === 'verifyPayment' && conversationState.paymentProof) {
+        paymentProofData = conversationState.paymentProof;
+      }
+
+      const response = await callBookingAPI(actionToSend, metadataToSend, messageToSend, paymentProofData);
+      
+      // Actualizar estado de conversación
+      if (response.metadata) {
+        setConversationState(prev => ({
+          ...prev,
+          metadata: { ...prev.metadata, ...response.metadata }
+        }));
+      }
+
+      // Agregar respuesta del bot
+      addMessage(
+        response.message, 
+        true, 
+        response.options,
+        response.needsInput,
+        response.inputPlaceholder
+      );
+
+      // Si necesita un archivo, mostrar el selector de archivos
+      if (response.needsInput && response.inputType === 'file') {
+        setIsFileUploadMode(true);
+      }
+
+    } catch (error: any) {
+      console.error('Error en conversación:', error);
+      addMessage(
+        'Lo siento, hubo un error inesperado. Por favor intenta nuevamente o contacta a Cecilia por WhatsApp al 1167437969.', 
+        true,
+        [
+          { label: 'Contactar por WhatsApp', action: 'contactWhatsApp' },
+          { label: 'Volver al inicio', action: 'start' }
+        ]
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleOptionClick = (option: any) => {
+    // Si la acción es para verificar el pago y estamos en modo de subida de archivo
+    if (option.action === 'verifyPayment' && isFileUploadMode && selectedFile) {
+      handleFileUpload();
+    } else {
+      handleSendMessage(option.label, option.action, option.metadata);
+    }
+  };
+  
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setSelectedFile(file);
+      
+      // Mostrar nombre del archivo seleccionado
+      setInputValue(file.name);
+    }
+  };
+  
+  const handleFileUpload = () => {
+    if (!selectedFile) return;
+    
+    // Convertir archivo a Data URI
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const dataUri = reader.result as string;
+      
+      // Guardar el Data URI en el estado de conversación
+      setConversationState(prev => ({
+        ...prev,
+        paymentProof: dataUri
+      }));
+      
+      // Enviar mensaje con la acción de verificar pago
+      handleSendMessage(
+        `Comprobante subido: ${selectedFile.name}`, 
+        'verifyPayment', 
+        conversationState.metadata
+      );
+      
+      // Resetear estado de archivo
+      setSelectedFile(null);
+      setInputValue('');
+      setIsFileUploadMode(false);
+      
+      // Limpiar input de archivo
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    };
+    reader.readAsDataURL(selectedFile);
+  };
+
+  const initializeChat = async () => {
+    if (!isInitialized) {
+      setIsLoading(true);
+      try {
+        const response = await callBookingAPI('start');
+        addMessage(response.message, true, response.options);
+        setIsInitialized(true);
+      } catch (error) {
+        addMessage(
+          '¡Hola! Soy tu asistente virtual de PODOPALERMO 👣✨\n\nHubo un problema al inicializar el chat, pero puedes contactar directamente a Cecilia por WhatsApp.',
+          true,
+          [{ label: 'Contactar por WhatsApp', action: 'contactWhatsApp' }]
+        );
+        setIsInitialized(true);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+  };
+
+  // Inicializar el chat solo una vez cuando se muestra
   useEffect(() => {
-    if (isOpen && messages.length === 0) {
-      // Mensaje inicial
-      setTimeout(() => {
-        addBotMessage(
-          "¡Hola! Soy tu asistente para agendar turnos de podología. ¿Cómo te gustaría buscar tu turno?",
-          [
-            { label: "Próximo turno disponible", action: "next_available" },
-            { label: "Elegir día y horario", action: "choose_time" },
-            { label: "Podólogo específico", action: "choose_doctor" }
-          ]
-        );
-        setCurrentStep('preference');
-      }, 500);
+    if ((isOpen || embedded) && !isInitialized) {
+      initializeChat();
     }
-  }, [isOpen]);
-
-  const addBotMessage = (content: string, options?: Message['options']) => {
-    const newMessage: Message = {
-      id: Date.now().toString(),
-      type: 'bot',
-      content,
-      timestamp: new Date(),
-      options
-    };
-    setMessages(prev => [...prev, newMessage]);
-  };
-
-  const addUserMessage = (content: string) => {
-    const newMessage: Message = {
-      id: Date.now().toString(),
-      type: 'user',
-      content,
-      timestamp: new Date()
-    };
-    setMessages(prev => [...prev, newMessage]);
-  };
-
-  const handleOptionClick = async (option: Message['options'][0]) => {
-    addUserMessage(option.label);
-    setIsLoading(true);
-
-    // Simular delay de procesamiento
-    await new Promise(resolve => setTimeout(resolve, 1000));
-
-    switch (option.action) {
-      case 'next_available':
-        addBotMessage(
-          "Perfecto. Estos son los próximos turnos disponibles:",
-          [
-            { label: "Mañana 10:00 AM - Dr. García", action: "select_slot", data: { date: "Mañana", time: "10:00 AM", doctor: "Dr. García" } },
-            { label: "Pasado mañana 2:30 PM - Dra. López", action: "select_slot", data: { date: "Pasado mañana", time: "2:30 PM", doctor: "Dra. López" } },
-            { label: "Ver más opciones", action: "more_options" }
-          ]
-        );
-        setCurrentStep('slots');
-        break;
-
-      case 'choose_time':
-        addBotMessage(
-          "¿Qué día te viene mejor?",
-          [
-            { label: "Esta semana", action: "this_week" },
-            { label: "Próxima semana", action: "next_week" },
-            { label: "Cualquier día", action: "any_day" }
-          ]
-        );
-        setCurrentStep('slots');
-        break;
-
-      case 'choose_doctor':
-        addBotMessage(
-          "Estos son nuestros podólogos disponibles:",
-          [
-            { label: "Dr. García - Pie diabético", action: "doctor_garcia" },
-            { label: "Dra. López - Podología deportiva", action: "doctor_lopez" },
-            { label: "Dr. Martínez - Podología general", action: "doctor_martinez" }
-          ]
-        );
-        setCurrentStep('slots');
-        break;
-
-      case 'select_slot':
-        setCurrentStep('details');
-        addBotMessage(
-          `Excelente elección: ${option.data.date} a las ${option.data.time} con ${option.data.doctor}.\n\nPara confirmar tu turno, necesito algunos datos:`,
-          [
-            { label: "Continuar con mis datos", action: "provide_details" }
-          ]
-        );
-        break;
-
-      case 'provide_details':
-        addBotMessage("Por favor, decime tu nombre completo:");
-        setCurrentStep('details');
-        break;
-
-      case 'show_payment':
-        addBotMessage(
-          `💰 Datos para transferencia:\n\n• Banco: Santander\n• CBU: 0720123456789012345678\n• Alias: FOOT.HAVEN.PAGO\n• Titular: Foot Haven SRL\n• Monto: $10.000\n\nUna vez que hagas la transferencia, subí el comprobante y te confirmaremos el turno.`,
-          [
-            { label: "Ya hice la transferencia", action: "payment_done" },
-            { label: "Cambiar turno", action: "change_slot" }
-          ]
-        );
-        setCurrentStep('payment');
-        break;
-
-      case 'payment_done':
-        addBotMessage(
-          `🎉 ¡Perfecto! Tu turno ha sido confirmado.\n\n📅 Resumen:\n• ${option.data?.date || 'Fecha'} a las ${option.data?.time || 'Hora'}\n• ${option.data?.doctor || 'Doctor'}\n• Paciente: ${userInfo.name}\n\n📍 Dirección: Av. Santa Fe 3288, CABA\n\nTe enviaremos un recordatorio por WhatsApp 24hs antes.`,
-          [
-            { label: "Agendar otro turno", action: "new_booking" },
-            { label: "Finalizar", action: "close" }
-          ]
-        );
-        setCurrentStep('confirmed');
-        break;
-
-      case 'close':
-        onClose();
-        break;
-
-      default:
-        addBotMessage("Entendido. ¿Te ayudo con algo más?");
-    }
-
-    setIsLoading(false);
-  };
-
-  const handleSendMessage = async () => {
-    if (!inputValue.trim()) return;
-
-    const message = inputValue.trim();
-    addUserMessage(message);
-    setInputValue('');
-    setIsLoading(true);
-
-    // Simular procesamiento
-    await new Promise(resolve => setTimeout(resolve, 800));
-
-    // Lógica basada en el paso actual
-    switch (currentStep) {
-      case 'details':
-        if (!userInfo.name) {
-          setUserInfo(prev => ({ ...prev, name: message }));
-          addBotMessage(`Gracias ${message}. Ahora necesito tu número de teléfono:`);
-        } else if (!userInfo.phone) {
-          setUserInfo(prev => ({ ...prev, phone: message }));
-          addBotMessage(
-            "Perfecto. ¿Hay algún motivo específico para tu visita? (opcional)",
-            [
-              { label: "Continuar sin especificar", action: "skip_reason" },
-              { label: "Escribir motivo", action: "write_reason" }
-            ]
-          );
-        } else {
-          setUserInfo(prev => ({ ...prev, reason: message }));
-          addBotMessage(
-            "¡Listo! Tu turno está casi confirmado. Para finalizar, necesito que realices el pago de $10.000.",
-            [
-              { label: "Ver datos para transferencia", action: "show_payment" }
-            ]
-          );
-          setCurrentStep('payment');
-        }
-        break;
-
-      default:
-        // Respuesta inteligente básica
-        if (message.toLowerCase().includes('turno') || message.toLowerCase().includes('cita')) {
-          addBotMessage(
-            "Te ayudo a encontrar un turno. ¿Cómo te gustaría buscarlo?",
-            [
-              { label: "Próximo turno disponible", action: "next_available" },
-              { label: "Elegir día y horario", action: "choose_time" }
-            ]
-          );
-        } else if (message.toLowerCase().includes('dolor') || message.toLowerCase().includes('molestia')) {
-          addBotMessage(
-            "Entiendo que tenés una molestia. Es importante que te vea un podólogo pronto. Te busco el turno más cercano:",
-            [
-              { label: "Sí, buscar turno urgente", action: "next_available" }
-            ]
-          );
-        } else {
-          addBotMessage(
-            "Entiendo. ¿Podrías elegir una de las opciones que te mostré arriba, o decime si necesitás algo específico?"
-          );
-        }
-    }
-
-    setIsLoading(false);
-  };
+  }, [isOpen, embedded, isInitialized]);
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -249,95 +262,304 @@ export default function ChatBot({ isOpen, onClose }: ChatBotProps) {
     }
   };
 
-  if (!isOpen) return null;
-
-  return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-      <Card className="w-full max-w-2xl h-[600px] flex flex-col">
+  // Renderizado para modo embebido (en página)
+  if (embedded) {
+    return (
+      <div className="h-full flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b bg-green-600 text-white rounded-t-lg">
+        <div className="flex items-center justify-between p-4 border-b bg-gradient-to-r from-green-600 to-green-700 text-white rounded-t-lg">
           <div className="flex items-center space-x-2">
-            <MessageCircle className="h-5 w-5" />
-            <span className="font-semibold">Asistente de Turnos</span>
+            <Bot className="h-5 w-5" />
+            <div>
+              <span className="font-semibold">Asistente PODOPALERMO</span>
+              <div className="text-xs opacity-90">Reserva tu turno 24/7</div>
+            </div>
           </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onClose}
-            className="text-white hover:bg-green-700"
-          >
-            <X className="h-4 w-4" />
-          </Button>
         </div>
 
         {/* Messages */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50">
           {messages.map((message) => (
             <div
               key={message.id}
-              className={cn(
-                "flex",
-                message.type === 'user' ? "justify-end" : "justify-start"
-              )}
+              className={`flex ${message.isBot ? 'justify-start' : 'justify-end'}`}
             >
               <div
-                className={cn(
-                  "max-w-[80%] rounded-lg p-3",
-                  message.type === 'user'
-                    ? "bg-green-600 text-white"
-                    : "bg-gray-100 text-gray-800"
-                )}
+                className={`max-w-[85%] rounded-lg p-3 ${
+                  message.isBot
+                    ? 'bg-white text-gray-800 shadow-sm border'
+                    : 'bg-green-600 text-white'
+                }`}
               >
-                <p className="text-sm">{message.content}</p>
-
-                {/* Options */}
-                {message.options && (
-                  <div className="mt-3 space-y-2">
-                    {message.options.map((option, index) => (
-                      <Button
-                        key={index}
-                        variant="outline"
-                        size="sm"
-                        className="w-full justify-start text-left h-auto py-2 px-3"
-                        onClick={() => handleOptionClick(option)}
-                      >
-                        {option.label}
-                      </Button>
-                    ))}
+                <div className="flex items-start space-x-2">
+                  {message.isBot && <Bot className="h-4 w-4 mt-0.5 flex-shrink-0 text-green-600" />}
+                  <div className="flex-1">
+                    <p className="text-sm whitespace-pre-wrap leading-relaxed">{message.text}</p>
+                    {message.options && (
+                      <div className="mt-3 space-y-2">
+                        {message.options.map((option, index) => (
+                          <Button
+                            key={index}
+                            variant="outline"
+                            size="sm"
+                            className="w-full justify-start text-xs hover:bg-green-50 border-green-200 text-green-700 hover:text-green-800"
+                            onClick={() => handleOptionClick(option)}
+                          >
+                            {option.label}
+                            {option.action === 'openWhatsApp' && <ExternalLink className="h-3 w-3 ml-1" />}
+                          </Button>
+                        ))}
+                      </div>
+                    )}
                   </div>
-                )}
+                  {!message.isBot && <User className="h-4 w-4 mt-0.5 flex-shrink-0" />}
+                </div>
               </div>
             </div>
           ))}
-
-          {/* Loading indicator */}
           {isLoading && (
             <div className="flex justify-start">
-              <div className="bg-gray-100 rounded-lg p-3">
-                <LoadingDots />
+              <div className="bg-white rounded-lg p-3 shadow-sm border">
+                <div className="flex items-center space-x-2">
+                  <Bot className="h-4 w-4 text-green-600" />
+                  <div className="flex space-x-1">
+                    <div className="w-2 h-2 bg-green-400 rounded-full animate-bounce"></div>
+                    <div className="w-2 h-2 bg-green-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                    <div className="w-2 h-2 bg-green-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                  </div>
+                </div>
               </div>
             </div>
           )}
-
           <div ref={messagesEndRef} />
         </div>
 
         {/* Input */}
-        <div className="p-4 border-t">
+        <div className="p-4 border-t bg-white">
           <div className="flex space-x-2">
-            <Input
-              value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
-              onKeyPress={handleKeyPress}
-              placeholder="Escribe tu mensaje..."
-              className="flex-1"
-            />
-            <Button onClick={handleSendMessage} disabled={!inputValue.trim() || isLoading}>
-              <Send className="h-4 w-4" />
-            </Button>
+            {isFileUploadMode ? (
+              <>
+                <Input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleFileChange}
+                  accept="image/jpeg,image/png,image/webp,application/pdf"
+                  className="hidden"
+                />
+                <Input
+                  value={inputValue}
+                  placeholder="Selecciona un comprobante de pago..."
+                  readOnly
+                  onClick={() => fileInputRef.current?.click()}
+                  className="flex-1 cursor-pointer"
+                />
+                <Button
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isLoading}
+                  size="icon"
+                  className="bg-green-600 hover:bg-green-700"
+                >
+                  <UploadCloud className="h-4 w-4" />
+                </Button>
+              </>
+            ) : (
+              <>
+                <Input
+                  value={inputValue}
+                  onChange={(e) => setInputValue(e.target.value)}
+                  placeholder={
+                    messages[messages.length - 1]?.inputPlaceholder || 
+                    "Escribe tu mensaje..."
+                  }
+                  onKeyDown={handleKeyPress}
+                  disabled={isLoading}
+                  className="flex-1"
+                />
+                <Button
+                  onClick={() => handleSendMessage()}
+                  disabled={isLoading || !inputValue.trim()}
+                  size="icon"
+                  className="bg-green-600 hover:bg-green-700"
+                >
+                  <Send className="h-4 w-4" />
+                </Button>
+              </>
+            )}
+          </div>
+          <div className="text-xs text-gray-500 mt-2 text-center">
+            Powered by PODOPALERMO AI Assistant
           </div>
         </div>
-      </Card>
-    </div>
+      </div>
+    );
+  }
+
+  // Renderizado para modo flotante (botón + ventana emergente)
+  return (
+    <>
+      {/* Chat Button */}
+      <motion.div
+        className="fixed bottom-6 right-6 z-50"
+        initial={{ scale: 0 }}
+        animate={{ scale: 1 }}
+        transition={{ type: "spring", stiffness: 260, damping: 20 }}
+      >
+        <Button
+          onClick={() => setIsOpen(true)}
+          className="h-14 w-14 rounded-full bg-green-600 hover:bg-green-700 shadow-lg hover:shadow-xl transition-all duration-200"
+          size="icon"
+        >
+          <MessageCircle className="h-6 w-6" />
+        </Button>
+      </motion.div>
+
+      {/* Chat Window */}
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0, y: 100, scale: 0.3 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 100, scale: 0.3 }}
+            transition={{ type: "spring", stiffness: 260, damping: 20 }}
+            className="fixed bottom-24 right-6 z-50 w-96 h-[600px] max-w-[calc(100vw-2rem)] max-h-[calc(100vh-8rem)]"
+          >
+            <Card className="h-full flex flex-col shadow-2xl border-0">
+              {/* Header */}
+              <div className="flex items-center justify-between p-4 border-b bg-gradient-to-r from-green-600 to-green-700 text-white rounded-t-lg">
+                <div className="flex items-center space-x-2">
+                  <Bot className="h-5 w-5" />
+                  <div>
+                    <span className="font-semibold">Asistente PODOPALERMO</span>
+                    <div className="text-xs opacity-90">Reserva tu turno 24/7</div>
+                  </div>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setIsOpen(false)}
+                  className="text-white hover:bg-green-800 transition-colors"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+
+              {/* Messages */}
+              <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50">
+                {messages.map((message) => (
+                  <div
+                    key={message.id}
+                    className={`flex ${message.isBot ? 'justify-start' : 'justify-end'}`}
+                  >
+                    <div
+                      className={`max-w-[85%] rounded-lg p-3 ${
+                        message.isBot
+                          ? 'bg-white text-gray-800 shadow-sm border'
+                          : 'bg-green-600 text-white'
+                      }`}
+                    >
+                      <div className="flex items-start space-x-2">
+                        {message.isBot && <Bot className="h-4 w-4 mt-0.5 flex-shrink-0 text-green-600" />}
+                        <div className="flex-1">
+                          <p className="text-sm whitespace-pre-wrap leading-relaxed">{message.text}</p>
+                          {message.options && (
+                            <div className="mt-3 space-y-2">
+                              {message.options.map((option, index) => (
+                                <Button
+                                  key={index}
+                                  variant="outline"
+                                  size="sm"
+                                  className="w-full justify-start text-xs hover:bg-green-50 border-green-200 text-green-700 hover:text-green-800"
+                                  onClick={() => handleOptionClick(option)}
+                                >
+                                  {option.label}
+                                  {option.action === 'openWhatsApp' && <ExternalLink className="h-3 w-3 ml-1" />}
+                                </Button>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                        {!message.isBot && <User className="h-4 w-4 mt-0.5 flex-shrink-0" />}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                {isLoading && (
+                  <div className="flex justify-start">
+                    <div className="bg-white rounded-lg p-3 shadow-sm border">
+                      <div className="flex items-center space-x-2">
+                        <Bot className="h-4 w-4 text-green-600" />
+                        <div className="flex space-x-1">
+                          <div className="w-2 h-2 bg-green-400 rounded-full animate-bounce"></div>
+                          <div className="w-2 h-2 bg-green-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                          <div className="w-2 h-2 bg-green-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                <div ref={messagesEndRef} />
+              </div>
+
+              {/* Input */}
+              <div className="p-4 border-t bg-white">
+                <div className="flex space-x-2">
+                  {isFileUploadMode ? (
+                    <>
+                      <Input
+                        type="file"
+                        ref={fileInputRef}
+                        onChange={handleFileChange}
+                        accept="image/jpeg,image/png,image/webp,application/pdf"
+                        className="hidden"
+                      />
+                      <Input
+                        value={inputValue}
+                        placeholder="Selecciona un comprobante de pago..."
+                        readOnly
+                        onClick={() => fileInputRef.current?.click()}
+                        className="flex-1 cursor-pointer"
+                      />
+                      <Button
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={isLoading}
+                        size="icon"
+                        className="bg-green-600 hover:bg-green-700"
+                      >
+                        <UploadCloud className="h-4 w-4" />
+                      </Button>
+                    </>
+                  ) : (
+                    <>
+                      <Input
+                        value={inputValue}
+                        onChange={(e) => setInputValue(e.target.value)}
+                        placeholder={
+                          messages[messages.length - 1]?.inputPlaceholder || 
+                          "Escribe tu mensaje..."
+                        }
+                        onKeyDown={handleKeyPress}
+                        disabled={isLoading}
+                        className="flex-1"
+                      />
+                      <Button
+                        onClick={() => handleSendMessage()}
+                        disabled={isLoading || !inputValue.trim()}
+                        size="icon"
+                        className="bg-green-600 hover:bg-green-700"
+                      >
+                        <Send className="h-4 w-4" />
+                      </Button>
+                    </>
+                  )}
+                </div>
+                <div className="text-xs text-gray-500 mt-2 text-center">
+                  Powered by PODOPALERMO AI Assistant
+                </div>
+              </div>
+            </Card>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </>
   );
 }

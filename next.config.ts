@@ -2,15 +2,15 @@ import type {NextConfig} from 'next';
 
 const nextConfig: NextConfig = {
   /* config options here */
+  reactStrictMode: false, // Deshabilitar StrictMode temporalmente para debugging
   typescript: {
     ignoreBuildErrors: true,
   },
   eslint: {
     ignoreDuringBuilds: true,
   },
-  output: 'export', // Exportar como archivos estáticos para Firebase
+  // Removido output: 'export' para permitir APIs dinámicas
   images: {
-    unoptimized: true, // Necesario para exportación estática
     remotePatterns: [
       {
         protocol: 'https',

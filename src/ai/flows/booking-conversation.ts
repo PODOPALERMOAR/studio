@@ -1,206 +1,388 @@
-import { genkit } from 'genkit';
-import { googleAI } from '@genkit-ai/googleai';
+/**
+ * Sistema de conversación inteligente para reservas de PODOPALERMO
+ * Integra con Google Calendar y verificación de pagos con IA
+ */
 
-const ai = genkit({
-    plugins: [googleAI()],
-    model: 'googleai/gemini-2.0-flash',
-});
+import { startBookingConversation } from './start-booking-conversation';
+import { findNextAvailableSlot } from './find-next-available-slot';
+import { verifyPaymentAndCreateAppointment } from './verify-payment-and-create-appointment';
+import { getActivePodologists } from '@/config/podologists';
+import { getPaymentDetailsForPodologist, EXPECTED_PAYMENT_AMOUNT, CECILIA_WHATSAPP_NUMBER } from '@/config/paymentDetails';
 
 export interface BookingConversationInput {
-    message: string;
-    context?: {
-        step: 'greeting' | 'preference' | 'slots' | 'details' | 'payment' | 'confirmed';
-        userInfo?: {
-            name?: string;
-            phone?: string;
-            reason?: string;
-        };
-        selectedSlot?: {
-            date: string;
-            time: string;
-            doctor: string;
-        };
-    };
+  action: string;
+  message?: string;
+  metadata?: Record<string, any>;
+  userInfo?: {
+    firstName?: string;
+    lastName?: string;
+    phone?: string;
+    countryCode?: string;
+    reason?: string;
+  };
+  paymentProof?: string; // Data URI del comprobante
 }
 
 export interface BookingConversationOutput {
-    response: string;
-    nextStep: string;
-    options?: Array<{
-        label: string;
-        action: string;
-        data?: any;
-    }>;
-    needsInput?: boolean;
+  response: string;
+  options?: Array<{
+    label: string;
+    action: string;
+    metadata?: Record<string, any>;
+  }>;
+  needsInput?: boolean;
+  inputType?: 'text' | 'file';
+  inputPlaceholder?: string;
+  debugInfo?: string;
 }
 
-export const bookingConversation = ai.defineFlow(
-    {
-        name: 'bookingConversation',
-        inputSchema: {
-            type: 'object',
-            properties: {
-                message: { type: 'string' },
-                context: {
-                    type: 'object',
-                    properties: {
-                        step: { type: 'string' },
-                        userInfo: {
-                            type: 'object',
-                            properties: {
-                                name: { type: 'string' },
-                                phone: { type: 'string' },
-                                reason: { type: 'string' }
-                            }
-                        },
-                        selectedSlot: {
-                            type: 'object',
-                            properties: {
-                                date: { type: 'string' },
-                                time: { type: 'string' },
-                                doctor: { type: 'string' }
-                            }
-                        }
-                    }
-                }
-            },
-            required: ['message']
-        },
-        outputSchema: {
-            type: 'object',
-            properties: {
-                response: { type: 'string' },
-                nextStep: { type: 'string' },
-                options: {
-                    type: 'array',
-                    items: {
-                        type: 'object',
-                        properties: {
-                            label: { type: 'string' },
-                            action: { type: 'string' },
-                            data: { type: 'object' }
-                        }
-                    }
-                },
-                needsInput: { type: 'boolean' }
-            },
-            required: ['response', 'nextStep']
+export async function bookingConversation(input: BookingConversationInput): Promise<BookingConversationOutput> {
+  const { action, metadata, userInfo, paymentProof } = input;
+  
+  try {
+    switch (action) {
+      case 'start':
+      case 'goHome':
+        const welcomeResult = await startBookingConversation();
+        return {
+          response: welcomeResult.welcomeMessage,
+          options: welcomeResult.initialOptions,
+        };
+
+      case 'choosePodologist':
+        const activePodologists = getActivePodologists();
+        return {
+          response: "¿Con qué podólogo te gustaría agendar tu turno?",
+          options: [
+            ...activePodologists.map(p => ({
+              label: `${p.name}${p.specialties ? ` - ${p.specialties[0]}` : ''}`,
+              action: 'findNext',
+              metadata: { podologistKey: p.key }
+            })),
+            { label: "Cualquier podólogo disponible", action: 'findNext', metadata: { podologistKey: 'any' } },
+            { label: "Volver al menú", action: 'goHome' }
+          ],
+        };
+
+      case 'findNext':
+        const slotResult = await findNextAvailableSlot({
+          podologistKey: metadata?.podologistKey,
+          previousSlotTimestamp: metadata?.previousSlotTimestamp,
+        });
+        
+        return {
+          response: slotResult.message,
+          options: slotResult.options,
+          debugInfo: slotResult.debugInfo,
+        };
+
+      case 'confirmSlot':
+        if (!metadata?.slotId || !metadata?.slotTimestamp || !metadata?.podologistKey) {
+          return {
+            response: "Error: Información del slot incompleta. Por favor, selecciona un turno nuevamente.",
+            options: [{ label: "Buscar turnos", action: 'findNext', metadata: { podologistKey: 'any' } }],
+          };
         }
-    },
-    async (input) => {
-        const { message, context } = input;
-        const currentStep = context?.step || 'greeting';
 
-        // Simular disponibilidad de turnos (en producción esto vendría de Google Calendar)
-        const availableSlots = [
-            { date: 'Mañana', time: '10:00 AM', doctor: 'Dr. García', id: '1' },
-            { date: 'Mañana', time: '2:30 PM', doctor: 'Dra. López', id: '2' },
-            { date: 'Pasado mañana', time: '9:00 AM', doctor: 'Dr. García', id: '3' },
-            { date: 'Pasado mañana', time: '4:00 PM', doctor: 'Dr. Martínez', id: '4' }
-        ];
+        return {
+          response: "¡Perfecto! Para confirmar tu turno, necesito algunos datos. Empecemos con tu nombre:",
+          needsInput: true,
+          inputType: 'text',
+          inputPlaceholder: 'Escribe tu nombre completo...',
+          options: [
+            { 
+              label: "Continuar con datos", 
+              action: 'collectUserInfo', 
+              metadata: { 
+                ...metadata,
+                step: 'firstName' 
+              } 
+            }
+          ],
+        };
 
-        switch (currentStep) {
-            case 'greeting':
-                return {
-                    response: "¡Hola! Soy tu asistente para agendar turnos de podología. ¿Cómo te gustaría buscar tu turno?",
-                    nextStep: 'preference',
-                    options: [
-                        { label: "Próximo turno disponible", action: "next_available" },
-                        { label: "Elegir día y horario", action: "choose_time" },
-                        { label: "Podólogo específico", action: "choose_doctor" }
-                    ]
-                };
+      case 'collectUserInfo':
+        return handleUserInfoCollection(input);
 
-            case 'preference':
-                if (message.includes('próximo') || message.includes('disponible')) {
-                    return {
-                        response: "Perfecto. Estos son los próximos turnos disponibles:",
-                        nextStep: 'slots',
-                        options: availableSlots.slice(0, 3).map(slot => ({
-                            label: `${slot.date} ${slot.time} - ${slot.doctor}`,
-                            action: 'select_slot',
-                            data: slot
-                        }))
-                    };
-                } else if (message.includes('día') || message.includes('horario')) {
-                    return {
-                        response: "¿Qué día te viene mejor?",
-                        nextStep: 'slots',
-                        options: [
-                            { label: "Esta semana", action: "this_week" },
-                            { label: "Próxima semana", action: "next_week" },
-                            { label: "Cualquier día", action: "any_day" }
-                        ]
-                    };
-                } else {
-                    return {
-                        response: "Estos son nuestros podólogos disponibles:",
-                        nextStep: 'slots',
-                        options: [
-                            { label: "Dr. García - Pie diabético", action: "doctor_garcia" },
-                            { label: "Dra. López - Podología deportiva", action: "doctor_lopez" },
-                            { label: "Dr. Martínez - Podología general", action: "doctor_martinez" }
-                        ]
-                    };
-                }
+      case 'showPaymentInfo':
+        return handlePaymentInfo(input);
 
-            case 'slots':
-                return {
-                    response: `Excelente elección. Para confirmar tu turno, necesito algunos datos básicos:`,
-                    nextStep: 'details',
-                    needsInput: true
-                };
-
-            case 'details':
-                if (!context?.userInfo?.name) {
-                    return {
-                        response: "Por favor, decime tu nombre completo:",
-                        nextStep: 'details',
-                        needsInput: true
-                    };
-                } else if (!context?.userInfo?.phone) {
-                    return {
-                        response: `Gracias ${context.userInfo.name}. Ahora necesito tu número de teléfono:`,
-                        nextStep: 'details',
-                        needsInput: true
-                    };
-                } else {
-                    return {
-                        response: "¡Perfecto! Tu turno está casi confirmado. Para finalizar, necesito que realices el pago de $10.000.",
-                        nextStep: 'payment',
-                        options: [
-                            { label: "Ver datos para transferencia", action: "show_payment" },
-                            { label: "Pagar con tarjeta", action: "card_payment" }
-                        ]
-                    };
-                }
-
-            case 'payment':
-                return {
-                    response: `¡Listo! Tu turno ha sido confirmado. Te enviaremos un recordatorio por WhatsApp 24 horas antes.
-          
-📅 Turno confirmado:
-• Fecha: ${context?.selectedSlot?.date}
-• Hora: ${context?.selectedSlot?.time}
-• Podólogo: ${context?.selectedSlot?.doctor}
-• Paciente: ${context?.userInfo?.name}
-
-📍 Dirección: Av. Santa Fe 3288, CABA`,
-                    nextStep: 'confirmed',
-                    options: [
-                        { label: "Agendar otro turno", action: "new_booking" },
-                        { label: "Finalizar", action: "close" }
-                    ]
-                };
-
-            default:
-                return {
-                    response: "¿En qué más puedo ayudarte?",
-                    nextStep: 'greeting',
-                    options: [
-                        { label: "Agendar nuevo turno", action: "new_booking" }
-                    ]
-                };
+      case 'verifyPayment':
+        if (!paymentProof) {
+          return {
+            response: "Por favor, sube tu comprobante de pago para verificarlo.",
+            needsInput: true,
+            inputType: 'file',
+            inputPlaceholder: 'Selecciona tu comprobante de pago...',
+          };
         }
+
+        return await handlePaymentVerification(input);
+
+      case 'contactCecilia':
+        return {
+          response: `Para contactar directamente con Cecilia, puedes escribirle por WhatsApp al ${CECILIA_WHATSAPP_NUMBER}. Ella te ayudará con cualquier consulta o problema.`,
+          options: [
+            { label: "Empezar de nuevo", action: 'start' }
+          ],
+        };
+
+      default:
+        return {
+          response: "No entendí esa acción. ¿Te gustaría empezar de nuevo?",
+          options: [{ label: "Empezar de nuevo", action: 'start' }],
+        };
     }
-);
+  } catch (error: any) {
+    console.error('Error en bookingConversation:', error);
+    return {
+      response: "Lo siento, ocurrió un error inesperado. ¿Te gustaría intentar de nuevo?",
+      options: [
+        { label: "Intentar de nuevo", action: 'start' },
+        { label: `Contactar a Cecilia`, action: 'contactCecilia' }
+      ],
+      debugInfo: error.message,
+    };
+  }
+}
+
+function handleUserInfoCollection(input: BookingConversationInput): BookingConversationOutput {
+  const { metadata, userInfo, message } = input;
+  const step = metadata?.step || 'firstName';
+
+  switch (step) {
+    case 'firstName':
+      if (!message || message.trim().length < 2) {
+        return {
+          response: "Por favor, ingresa un nombre válido:",
+          needsInput: true,
+          inputType: 'text',
+          inputPlaceholder: 'Tu nombre completo...',
+        };
+      }
+
+      const nameParts = message.trim().split(' ');
+      const firstName = nameParts[0];
+      const lastName = nameParts.slice(1).join(' ');
+
+      return {
+        response: `Gracias ${firstName}. Ahora necesito tu número de teléfono (incluye el código de país, ej: +54911234567):`,
+        needsInput: true,
+        inputType: 'text',
+        inputPlaceholder: '+54911234567',
+        options: [
+          {
+            label: "Continuar",
+            action: 'collectUserInfo',
+            metadata: {
+              ...metadata,
+              step: 'phone',
+              firstName,
+              lastName: lastName || undefined,
+            }
+          }
+        ],
+      };
+
+    case 'phone':
+      if (!message || !message.match(/^\+\d{10,15}$/)) {
+        return {
+          response: "Por favor, ingresa un número de teléfono válido con código de país (ej: +54911234567):",
+          needsInput: true,
+          inputType: 'text',
+          inputPlaceholder: '+54911234567',
+        };
+      }
+
+      const phoneMatch = message.match(/^\+(\d{1,4})(.+)$/);
+      const countryCode = phoneMatch?.[1] || '54';
+      const phoneNumber = phoneMatch?.[2] || message.replace(/^\+/, '');
+
+      return {
+        response: `Perfecto ${metadata?.firstName}. ¿Hay algún motivo específico para tu consulta? (opcional)`,
+        needsInput: true,
+        inputType: 'text',
+        inputPlaceholder: 'Ej: dolor en el talón, uña encarnada, etc. (opcional)',
+        options: [
+          {
+            label: "Continuar",
+            action: 'collectUserInfo',
+            metadata: {
+              ...metadata,
+              step: 'reason',
+              phoneNumber,
+              countryCode,
+            }
+          },
+          {
+            label: "Omitir motivo",
+            action: 'showPaymentInfo',
+            metadata: {
+              ...metadata,
+              phoneNumber,
+              countryCode,
+              reason: undefined,
+            }
+          }
+        ],
+      };
+
+    case 'reason':
+      return {
+        response: "¡Excelente! Ahora necesito que realices el pago para confirmar tu turno.",
+        options: [
+          {
+            label: "Ver datos de pago",
+            action: 'showPaymentInfo',
+            metadata: {
+              ...metadata,
+              reason: message?.trim() || undefined,
+            }
+          }
+        ],
+      };
+
+    default:
+      return {
+        response: "Error en el flujo de recolección de datos. Empecemos de nuevo.",
+        options: [{ label: "Empezar de nuevo", action: 'start' }],
+      };
+  }
+}
+
+function handlePaymentInfo(input: BookingConversationInput): BookingConversationOutput {
+  const { metadata } = input;
+  
+  if (!metadata?.podologistKey) {
+    return {
+      response: "Error: Información del podólogo no encontrada. Por favor, selecciona un turno nuevamente.",
+      options: [{ label: "Buscar turnos", action: 'findNext', metadata: { podologistKey: 'any' } }],
+    };
+  }
+
+  const paymentDetails = getPaymentDetailsForPodologist(metadata.podologistKey);
+  
+  if (!paymentDetails) {
+    return {
+      response: "Error: No se encontraron datos de pago para este podólogo. Por favor, contacta a Cecilia.",
+      options: [{ label: `Contactar a Cecilia`, action: 'contactCecilia' }],
+    };
+  }
+
+  let paymentMessage = `💰 **Datos para transferencia**\n\n`;
+  paymentMessage += `**Monto:** $${EXPECTED_PAYMENT_AMOUNT.toLocaleString()}\n`;
+  paymentMessage += `**Banco:** ${paymentDetails.bankName}\n`;
+  paymentMessage += `**Titular:** ${paymentDetails.accountHolderName}\n`;
+  paymentMessage += `**Alias:** ${paymentDetails.alias}\n`;
+  
+  if (paymentDetails.cbu) {
+    paymentMessage += `**CBU:** ${paymentDetails.cbu}\n`;
+  }
+  if (paymentDetails.cvu) {
+    paymentMessage += `**CVU:** ${paymentDetails.cvu}\n`;
+  }
+  if (paymentDetails.cuilCuit) {
+    paymentMessage += `**CUIT/L:** ${paymentDetails.cuilCuit}\n`;
+  }
+  
+  paymentMessage += `\n📱 Una vez realizada la transferencia, sube tu comprobante para verificar el pago automáticamente.`;
+
+  return {
+    response: paymentMessage,
+    options: [
+      {
+        label: "Subir comprobante",
+        action: 'verifyPayment',
+        metadata: metadata
+      },
+      {
+        label: "Volver atrás",
+        action: 'confirmSlot',
+        metadata: {
+          slotId: metadata?.slotId,
+          slotTimestamp: metadata?.slotTimestamp,
+          podologistKey: metadata?.podologistKey,
+          podologistName: metadata?.podologistName,
+          podologistCalendarId: metadata?.podologistCalendarId,
+        }
+      }
+    ],
+    needsInput: true,
+    inputType: 'file',
+    inputPlaceholder: 'Selecciona tu comprobante de pago...',
+  };
+}
+
+async function handlePaymentVerification(input: BookingConversationInput): Promise<BookingConversationOutput> {
+  const { metadata, paymentProof } = input;
+  
+  if (!paymentProof) {
+    return {
+      response: "No se recibió el comprobante. Por favor, sube tu comprobante de pago:",
+      needsInput: true,
+      inputType: 'file',
+      inputPlaceholder: 'Selecciona tu comprobante de pago...',
+    };
+  }
+
+  if (!metadata?.slotId || !metadata?.firstName || !metadata?.phoneNumber) {
+    return {
+      response: "Error: Información incompleta para crear la cita. Por favor, empezar de nuevo.",
+      options: [{ label: "Empezar de nuevo", action: 'start' }],
+    };
+  }
+
+  try {
+    const verificationResult = await verifyPaymentAndCreateAppointment({
+      slotTimestamp: metadata.slotTimestamp,
+      slotEventId: metadata.slotId,
+      patientFirstName: metadata.firstName,
+      patientLastName: metadata.lastName,
+      phoneCountryCode: metadata.countryCode || '54',
+      phoneNumber: metadata.phoneNumber,
+      podologistKey: metadata.podologistKey,
+      podologistName: metadata.podologistName,
+      podologistCalendarId: metadata.podologistCalendarId,
+      bookingReason: metadata.reason,
+      paymentProofDataUri: paymentProof,
+    });
+
+    if (verificationResult.success) {
+      return {
+        response: verificationResult.personalizedMessage || verificationResult.message,
+        options: [
+          { label: "Agendar otro turno", action: 'start' },
+          { label: `Contactar a Cecilia`, action: 'contactCecilia' }
+        ],
+        debugInfo: verificationResult.debugInfo,
+      };
+    } else {
+      return {
+        response: verificationResult.personalizedMessage || verificationResult.message,
+        options: [
+          {
+            label: "Subir otro comprobante",
+            action: 'verifyPayment',
+            metadata: metadata
+          },
+          { label: `Contactar a Cecilia`, action: 'contactCecilia' },
+          { label: "Empezar de nuevo", action: 'start' }
+        ],
+        debugInfo: verificationResult.debugInfo,
+      };
+    }
+  } catch (error: any) {
+    return {
+      response: "Error verificando el pago. Por favor, intenta de nuevo o contacta a Cecilia.",
+      options: [
+        {
+          label: "Intentar de nuevo",
+          action: 'verifyPayment',
+          metadata: metadata
+        },
+        { label: `Contactar a Cecilia`, action: 'contactCecilia' }
+      ],
+      debugInfo: error.message,
+    };
+  }
+}
