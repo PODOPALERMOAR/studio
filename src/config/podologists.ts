@@ -47,17 +47,4 @@ export const podologists: PodologistProfile[] = [
   {
     key: 'luciana',
     name: 'Podóloga LUCIANA',
-    calendarId: 'f5c1fff48d572ef52eddd337fdc4fb8897a4dbb4c35ed4a44192cadc7d063f36@group.calendar.google.com',
-    specialties: ['Podología general', 'Ortesis']
-  },
-];
-
-// Helper para encontrar podólogo por clave
-export function findPodologistByKey(key: string): PodologistProfile | undefined {
-  return podologists.find(p => p.key.toLowerCase() === key.toLowerCase());
-}
-
-// Helper para obtener podólogos con calendario configurado
-export function getActivePodologists(): PodologistProfile[] {
-  return podologists.filter(p => p.calendarId && p.calendarId.trim() !== '');
-}
+    calendarId: 'f5c1fff48d572ef52eddd337fdc4fb8897a4dbb4c35ed4a44192cadc7d063f36@group.ca
