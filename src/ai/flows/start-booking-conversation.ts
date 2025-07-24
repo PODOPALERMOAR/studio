@@ -20,7 +20,7 @@ export type StartBookingConversationOutput = z.infer<typeof StartBookingConversa
 
 export async function startBookingConversation(): Promise<StartBookingConversationOutput> {
   return {
-    welcomeMessage: "¡Hola! Soy tu asistente virtual de PODOPALERMO. Estoy aquí para ayudarte a encontrar y reservar tu próximo turno. ¿Qué te gustaría hacer?",
+    welcomeMessage: "¡Hola! Soy tu asistente virtual de PODOPALERMO. Estoy aquí para ayudarte a encontrar y reservar tu próximo turno.",
     initialOptions: [
       { 
         label: "Buscar próximo turno disponible", 
@@ -28,7 +28,7 @@ export async function startBookingConversation(): Promise<StartBookingConversati
         metadata: { podologistKey: 'any' }
       },
       { 
-        label: "Elegir podólogo específico", 
+        label: "Elegir un podólogo específico", 
         action: "choosePodologist" 
       },
     ],

@@ -1,3 +1,4 @@
+'use server';
 // Configuración de podólogos para PODOPALERMO
 
 export interface PodologistProfile {
@@ -7,57 +8,47 @@ export interface PodologistProfile {
   specialties?: string[]; // Especialidades opcionales
 }
 
-// Helper para obtener variables de entorno de forma segura
-const getEnvVar = (varName: string, podologistName: string): string => {
-  const value = process.env[varName];
-  if (typeof value === 'string' && value.trim() !== '') {
-    return value;
-  }
-  console.warn(`[podologists.ts] ADVERTENCIA: Variable ${varName} para ${podologistName} no definida`);
-  return '';
-};
-
 export const podologists: PodologistProfile[] = [
   {
     key: 'silvia',
     name: 'Podóloga SILVIA',
-    calendarId: getEnvVar('CALENDAR_ID_SILVIA', 'Podóloga SILVIA'),
+    calendarId: '6f9ede745ce9d3277a7759b8eb7d85328322e7f471d4d576e7371c298b861caa@group.calendar.google.com',
     specialties: ['Podología general', 'Pie diabético']
   },
   {
     key: 'natalia',
     name: 'Podóloga NATALIA',
-    calendarId: getEnvVar('CALENDAR_ID_NATALIA', 'Podóloga NATALIA'),
+    calendarId: '81a0f190b31be19110d69ef0b20e07f5f0d1041d370427e623c51fbe2a47326b@group.calendar.google.com',
     specialties: ['Podología deportiva', 'Biomecánica']
   },
   {
     key: 'elizabeth',
     name: 'Podóloga ELIZABETH',
-    calendarId: getEnvVar('CALENDAR_ID_ELIZABETH', 'Podóloga ELIZABETH'),
+    calendarId: '296768970b6f1a4c738ce0cf3d7f0bcece6159f8c9fb9d6609cb17aee189c8c7@group.calendar.google.com',
     specialties: ['Podología general', 'Onicocriptosis']
   },
   {
     key: 'lorena',
     name: 'Podóloga LORENA',
-    calendarId: getEnvVar('CALENDAR_ID_LORENA', 'Podóloga LORENA'),
+    calendarId: 'c43f26136a6884b6de70e89b41bc214a3302b7ac504680ae62e1ff27f41419b7@group.calendar.google.com',
     specialties: ['Podología general', 'Verrugas plantares']
   },
   {
     key: 'martin',
     name: 'Podólogo MARTIN',
-    calendarId: getEnvVar('CALENDAR_ID_MARTIN', 'Podólogo MARTIN'),
+    calendarId: 'cb98de7b1dc8027f82bdc74f02761a71e681bfc7634756a27ee820e822d05b23@group.calendar.google.com',
     specialties: ['Podología masculina', 'Deportiva']
   },
   {
     key: 'diana',
     name: 'Podóloga DIANA',
-    calendarId: getEnvVar('CALENDAR_ID_DIANA', 'Podóloga DIANA'),
+    calendarId: '4db06585d67cfad764d8a3be208e128581aae5372ee60a8d078459889855f72e@group.calendar.google.com',
     specialties: ['Podología general', 'Helomas']
   },
   {
     key: 'luciana',
     name: 'Podóloga LUCIANA',
-    calendarId: getEnvVar('CALENDAR_ID_LUCIANA', 'Podóloga LUCIANA'),
+    calendarId: 'f5c1fff48d572ef52eddd337fdc4fb8897a4dbb4c35ed4a44192cadc7d063f36@group.calendar.google.com',
     specialties: ['Podología general', 'Ortesis']
   },
 ];

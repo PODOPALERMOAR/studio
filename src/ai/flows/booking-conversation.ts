@@ -2,7 +2,7 @@
  * Sistema de conversación inteligente para reservas de PODOPALERMO
  * Integra con Google Calendar y verificación de pagos con IA
  */
-
+'use server';
 import { startBookingConversation } from './start-booking-conversation';
 import { findNextAvailableSlot } from './find-next-available-slot';
 import { verifyPaymentAndCreateAppointment } from './verify-payment-and-create-appointment';
@@ -52,14 +52,14 @@ export async function bookingConversation(input: BookingConversationInput): Prom
       case 'choosePodologist':
         const activePodologists = getActivePodologists();
         return {
-          response: "¿Con qué podólogo te gustaría agendar tu turno?",
+          response: "¿Con qué podólogo/a te gustaría agendar tu turno?",
           options: [
             ...activePodologists.map(p => ({
               label: `${p.name}${p.specialties ? ` - ${p.specialties[0]}` : ''}`,
               action: 'findNext',
               metadata: { podologistKey: p.key }
             })),
-            { label: "Cualquier podólogo disponible", action: 'findNext', metadata: { podologistKey: 'any' } },
+            { label: "Cualquiera disponible", action: 'findNext', metadata: { podologistKey: 'any' } },
             { label: "Volver al menú", action: 'goHome' }
           ],
         };
@@ -79,7 +79,7 @@ export async function bookingConversation(input: BookingConversationInput): Prom
       case 'confirmSlot':
         if (!metadata?.slotId || !metadata?.slotTimestamp || !metadata?.podologistKey) {
           return {
-            response: "Error: Información del slot incompleta. Por favor, selecciona un turno nuevamente.",
+            response: "Hubo un error con la información del turno. Por favor, seleccioná un turno de nuevo.",
             options: [{ label: "Buscar turnos", action: 'findNext', metadata: { podologistKey: 'any' } }],
           };
         }
@@ -88,10 +88,10 @@ export async function bookingConversation(input: BookingConversationInput): Prom
           response: "¡Perfecto! Para confirmar tu turno, necesito algunos datos. Empecemos con tu nombre:",
           needsInput: true,
           inputType: 'text',
-          inputPlaceholder: 'Escribe tu nombre completo...',
+          inputPlaceholder: 'Escribí tu nombre completo...',
           options: [
             { 
-              label: "Continuar con datos", 
+              label: "Continuar", 
               action: 'collectUserInfo', 
               metadata: { 
                 ...metadata,
@@ -110,10 +110,10 @@ export async function bookingConversation(input: BookingConversationInput): Prom
       case 'verifyPayment':
         if (!paymentProof) {
           return {
-            response: "Por favor, sube tu comprobante de pago para verificarlo.",
+            response: "Por favor, subí tu comprobante de pago para verificarlo.",
             needsInput: true,
             inputType: 'file',
-            inputPlaceholder: 'Selecciona tu comprobante de pago...',
+            inputPlaceholder: 'Seleccioná tu comprobante...',
           };
         }
 
@@ -121,7 +121,7 @@ export async function bookingConversation(input: BookingConversationInput): Prom
 
       case 'contactCecilia':
         return {
-          response: `Para contactar directamente con Cecilia, puedes escribirle por WhatsApp al ${CECILIA_WHATSAPP_NUMBER}. Ella te ayudará con cualquier consulta o problema.`,
+          response: `Para contactar directamente con Cecilia, podés escribirle por WhatsApp al ${CECILIA_WHATSAPP_NUMBER}. Ella te ayudará con cualquier consulta o problema.`,
           options: [
             { label: "Empezar de nuevo", action: 'start' }
           ],
@@ -129,14 +129,14 @@ export async function bookingConversation(input: BookingConversationInput): Prom
 
       default:
         return {
-          response: "No entendí esa acción. ¿Te gustaría empezar de nuevo?",
+          response: "No entendí esa acción. ¿Querés empezar de nuevo?",
           options: [{ label: "Empezar de nuevo", action: 'start' }],
         };
     }
   } catch (error: any) {
     console.error('Error en bookingConversation:', error);
     return {
-      response: "Lo siento, ocurrió un error inesperado. ¿Te gustaría intentar de nuevo?",
+      response: "Lo siento, ocurrió un error inesperado. ¿Querés intentar de nuevo?",
       options: [
         { label: "Intentar de nuevo", action: 'start' },
         { label: `Contactar a Cecilia`, action: 'contactCecilia' }
@@ -154,7 +154,7 @@ function handleUserInfoCollection(input: BookingConversationInput): BookingConve
     case 'firstName':
       if (!message || message.trim().length < 2) {
         return {
-          response: "Por favor, ingresa un nombre válido:",
+          response: "Por favor, ingresá un nombre válido:",
           needsInput: true,
           inputType: 'text',
           inputPlaceholder: 'Tu nombre completo...',
@@ -166,10 +166,10 @@ function handleUserInfoCollection(input: BookingConversationInput): BookingConve
       const lastName = nameParts.slice(1).join(' ');
 
       return {
-        response: `Gracias ${firstName}. Ahora necesito tu número de teléfono (incluye el código de país, ej: +54911234567):`,
+        response: `Gracias ${firstName}. Ahora necesito tu número de teléfono (ej: 11 2345 6789):`,
         needsInput: true,
         inputType: 'text',
-        inputPlaceholder: '+54911234567',
+        inputPlaceholder: '1123456789',
         options: [
           {
             label: "Continuar",
@@ -185,18 +185,16 @@ function handleUserInfoCollection(input: BookingConversationInput): BookingConve
       };
 
     case 'phone':
-      if (!message || !message.match(/^\+\d{10,15}$/)) {
+       if (!message || !/^\d{10,15}$/.test(message.replace(/\s/g, ''))) {
         return {
-          response: "Por favor, ingresa un número de teléfono válido con código de país (ej: +54911234567):",
+          response: "Por favor, ingresá un número de teléfono válido (ej: 1123456789):",
           needsInput: true,
           inputType: 'text',
-          inputPlaceholder: '+54911234567',
+          inputPlaceholder: '1123456789',
         };
       }
-
-      const phoneMatch = message.match(/^\+(\d{1,4})(.+)$/);
-      const countryCode = phoneMatch?.[1] || '54';
-      const phoneNumber = phoneMatch?.[2] || message.replace(/^\+/, '');
+      
+      const phoneNumber = message.replace(/\s/g, '');
 
       return {
         response: `Perfecto ${metadata?.firstName}. ¿Hay algún motivo específico para tu consulta? (opcional)`,
@@ -206,12 +204,12 @@ function handleUserInfoCollection(input: BookingConversationInput): BookingConve
         options: [
           {
             label: "Continuar",
-            action: 'collectUserInfo',
+            action: 'showPaymentInfo',
             metadata: {
               ...metadata,
               step: 'reason',
               phoneNumber,
-              countryCode,
+              countryCode: '54',
             }
           },
           {
@@ -220,7 +218,7 @@ function handleUserInfoCollection(input: BookingConversationInput): BookingConve
             metadata: {
               ...metadata,
               phoneNumber,
-              countryCode,
+              countryCode: '54',
               reason: undefined,
             }
           }
@@ -228,7 +226,7 @@ function handleUserInfoCollection(input: BookingConversationInput): BookingConve
       };
 
     case 'reason':
-      return {
+       return {
         response: "¡Excelente! Ahora necesito que realices el pago para confirmar tu turno.",
         options: [
           {
@@ -242,9 +240,10 @@ function handleUserInfoCollection(input: BookingConversationInput): BookingConve
         ],
       };
 
+
     default:
       return {
-        response: "Error en el flujo de recolección de datos. Empecemos de nuevo.",
+        response: "Hubo un error en la recolección de datos. Empecemos de nuevo.",
         options: [{ label: "Empezar de nuevo", action: 'start' }],
       };
   }
@@ -255,7 +254,7 @@ function handlePaymentInfo(input: BookingConversationInput): BookingConversation
   
   if (!metadata?.podologistKey) {
     return {
-      response: "Error: Información del podólogo no encontrada. Por favor, selecciona un turno nuevamente.",
+      response: "Error: No encontré la información del podólogo. Por favor, seleccioná un turno de nuevo.",
       options: [{ label: "Buscar turnos", action: 'findNext', metadata: { podologistKey: 'any' } }],
     };
   }
@@ -264,13 +263,13 @@ function handlePaymentInfo(input: BookingConversationInput): BookingConversation
   
   if (!paymentDetails) {
     return {
-      response: "Error: No se encontraron datos de pago para este podólogo. Por favor, contacta a Cecilia.",
+      response: "Error: No se encontraron datos de pago para este podólogo. Por favor, contactá a Cecilia.",
       options: [{ label: `Contactar a Cecilia`, action: 'contactCecilia' }],
     };
   }
 
-  let paymentMessage = `💰 **Datos para transferencia**\n\n`;
-  paymentMessage += `**Monto:** $${EXPECTED_PAYMENT_AMOUNT.toLocaleString()}\n`;
+  let paymentMessage = `💰 **Datos para la transferencia**\n\n`;
+  paymentMessage += `**Monto:** $${EXPECTED_PAYMENT_AMOUNT.toLocaleString('es-AR')}\n`;
   paymentMessage += `**Banco:** ${paymentDetails.bankName}\n`;
   paymentMessage += `**Titular:** ${paymentDetails.accountHolderName}\n`;
   paymentMessage += `**Alias:** ${paymentDetails.alias}\n`;
@@ -285,7 +284,7 @@ function handlePaymentInfo(input: BookingConversationInput): BookingConversation
     paymentMessage += `**CUIT/L:** ${paymentDetails.cuilCuit}\n`;
   }
   
-  paymentMessage += `\n📱 Una vez realizada la transferencia, sube tu comprobante para verificar el pago automáticamente.`;
+  paymentMessage += `\n📱 Una vez que hagas la transferencia, subí tu comprobante para verificar el pago automáticamente.`;
 
   return {
     response: paymentMessage,
@@ -309,7 +308,7 @@ function handlePaymentInfo(input: BookingConversationInput): BookingConversation
     ],
     needsInput: true,
     inputType: 'file',
-    inputPlaceholder: 'Selecciona tu comprobante de pago...',
+    inputPlaceholder: 'Seleccioná tu comprobante...',
   };
 }
 
@@ -318,16 +317,16 @@ async function handlePaymentVerification(input: BookingConversationInput): Promi
   
   if (!paymentProof) {
     return {
-      response: "No se recibió el comprobante. Por favor, sube tu comprobante de pago:",
+      response: "No recibí el comprobante. Por favor, subí tu comprobante de pago:",
       needsInput: true,
       inputType: 'file',
-      inputPlaceholder: 'Selecciona tu comprobante de pago...',
+      inputPlaceholder: 'Seleccioná tu comprobante...',
     };
   }
 
   if (!metadata?.slotId || !metadata?.firstName || !metadata?.phoneNumber) {
     return {
-      response: "Error: Información incompleta para crear la cita. Por favor, empezar de nuevo.",
+      response: "Error: Falta información para crear la cita. Por favor, empezá de nuevo.",
       options: [{ label: "Empezar de nuevo", action: 'start' }],
     };
   }
@@ -373,7 +372,7 @@ async function handlePaymentVerification(input: BookingConversationInput): Promi
     }
   } catch (error: any) {
     return {
-      response: "Error verificando el pago. Por favor, intenta de nuevo o contacta a Cecilia.",
+      response: "Hubo un error verificando el pago. Por favor, intentá de nuevo o contactá a Cecilia.",
       options: [
         {
           label: "Intentar de nuevo",

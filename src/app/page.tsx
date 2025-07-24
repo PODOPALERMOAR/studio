@@ -1,9 +1,8 @@
 'use client';
 
-import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { ArrowRight, User, Gift, Sparkles, X, Home as HomeIcon } from 'lucide-react';
+import { ArrowRight, Home as HomeIcon } from 'lucide-react';
 import Image from 'next/image';
 import { useToast } from "@/hooks/use-toast";
 import { cn } from '@/lib/utils';

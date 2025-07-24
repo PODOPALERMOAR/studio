@@ -7,16 +7,20 @@ export function cn(...inputs: ClassValue[]) {
 
 export function formatPhoneNumber(phone: string): string {
   // Remover todos los caracteres no numéricos
-  const cleaned = phone.replace(/\D/g, '');
+  let cleaned = phone.replace(/\D/g, '');
   
   // Si empieza con 0, removerlo
-  const withoutZero = cleaned.startsWith('0') ? cleaned.substring(1) : cleaned;
+  if (cleaned.startsWith('0')) {
+    cleaned = cleaned.substring(1);
+  }
   
   // Si no empieza con 54 (código de Argentina), agregarlo
-  const withCountryCode = withoutZero.startsWith('54') ? withoutZero : '54' + withoutZero;
+  if (!cleaned.startsWith('54')) {
+    cleaned = '54' + cleaned;
+  }
   
   // Agregar el + al inicio
-  return '+' + withCountryCode;
+  return '+' + cleaned;
 }
 
 export function formatDisplayPhone(phone: string): string {
