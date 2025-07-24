@@ -47,4 +47,17 @@ export const podologists: PodologistProfile[] = [
   {
     key: 'luciana',
     name: 'Podóloga LUCIANA',
-    calendarId: 'f5c1fff48d572ef52eddd337fdc4fb8897a4dbb4c35ed4a44192cadc7d063f36@group.ca
+    calendarId: 'f5c1fff48d572ef52eddd337fdc4fb8897a4dbb4c35ed4a44192cadc7d063f36@group.calendar.google.com',
+    specialties: ['Reflexología', 'Podología pediátrica']
+  }
+];
+
+// Helper para encontrar un podólogo por su clave
+export function findPodologistByKey(key: string): PodologistProfile | undefined {
+  return podologists.find(p => p.key === key);
+}
+
+// Helper para obtener podólogos con calendario configurado
+export function getActivePodologists(): PodologistProfile[] {
+  return podologists.filter(p => p.calendarId && p.calendarId.trim() !== '');
+}
