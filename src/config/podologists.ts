@@ -1,4 +1,3 @@
-'use server';
 // Configuración de podólogos para PODOPALERMO
 
 export interface PodologistProfile {
@@ -54,11 +53,11 @@ export const podologists: PodologistProfile[] = [
 ];
 
 // Helper para encontrar podólogo por clave
-export async function findPodologistByKey(key: string): Promise<PodologistProfile | undefined> {
+export function findPodologistByKey(key: string): PodologistProfile | undefined {
   return podologists.find(p => p.key.toLowerCase() === key.toLowerCase());
 }
 
 // Helper para obtener podólogos con calendario configurado
-export async function getActivePodologists(): Promise<PodologistProfile[]> {
+export function getActivePodologists(): PodologistProfile[] {
   return podologists.filter(p => p.calendarId && p.calendarId.trim() !== '');
 }
