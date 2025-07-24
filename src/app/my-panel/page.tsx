@@ -128,7 +128,7 @@ function AppointmentsSection() {
         ) : (
           <div className="text-center py-8">
             <Calendar className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <p className="text-gray-600 mb-4">No tienes turnos programados</p>
+            <p className="text-gray-600 mb-4">No tenés turnos programados</p>
             <Button className="bg-green-600 hover:bg-green-700">
               <Plus className="h-4 w-4 mr-2" />
               Agendar Turno

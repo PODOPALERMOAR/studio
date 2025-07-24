@@ -13,11 +13,13 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { User, LogOut, Calendar, Settings } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { useRouter } from 'next/navigation';
 
 export default function UserMenu() {
   const { user, signOut } = useAuth();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
+  const router = useRouter();
 
   const handleSignOut = async () => {
     setLoading(true);
@@ -27,6 +29,7 @@ export default function UserMenu() {
         title: "Sesión cerrada",
         description: "Has cerrado sesión correctamente.",
       });
+      router.push('/');
     } catch (error) {
       toast({
         title: "Error",
@@ -77,19 +80,19 @@ export default function UserMenu() {
         
         <DropdownMenuSeparator />
         
-        <DropdownMenuItem>
+        <DropdownMenuItem onClick={() => router.push('/my-panel')}>
           <User className="mr-2 h-4 w-4" />
           <span>Mi Perfil</span>
         </DropdownMenuItem>
         
-        <DropdownMenuItem>
+        <DropdownMenuItem onClick={() => router.push('/my-panel')}>
           <Calendar className="mr-2 h-4 w-4" />
           <span>Mis Turnos</span>
         </DropdownMenuItem>
         
-        <DropdownMenuItem>
+        <DropdownMenuItem onClick={() => router.push('/admin')}>
           <Settings className="mr-2 h-4 w-4" />
-          <span>Configuración</span>
+          <span>Panel Admin</span>
         </DropdownMenuItem>
         
         <DropdownMenuSeparator />

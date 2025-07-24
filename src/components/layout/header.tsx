@@ -9,7 +9,7 @@ import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { useMounted } from '@/hooks/use-mounted';
 import UserMenu from '@/components/auth/UserMenu';
-import GoogleOnlyAuthModal from '@/components/auth/GoogleOnlyAuthModal';
+import SmartAuthModal from '@/components/auth/SmartAuthModal';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
 
 export default function Header() {
@@ -23,17 +23,14 @@ export default function Header() {
         "relative flex items-center justify-between whitespace-nowrap px-4 sm:px-10 py-3 h-20",
         "border-b border-solid border-border bg-background"
       )}>
-        {/* Logo centrado */}
         <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
-          <Link href="/" aria-label="Foot Haven Home">
+          <Link href="/" aria-label="Inicio de Podopalermo">
             <Logo width={72} height={72} />
           </Link>
         </div>
 
-        {/* Espacio izquierdo para balance */}
         <div className="w-24"></div>
 
-        {/* Autenticación */}
         <div className="flex items-center">
           {!mounted || loading ? (
             <div className="w-10 h-10 flex items-center justify-center">
@@ -55,7 +52,7 @@ export default function Header() {
         </div>
       </header>
 
-      <GoogleOnlyAuthModal
+      <SmartAuthModal
         isOpen={showAuthModal}
         onClose={() => setShowAuthModal(false)}
         onSuccess={() => setShowAuthModal(false)}

@@ -12,7 +12,7 @@ export function Logo({ className, width = 56, height = 56, ...props }: LogoProps
     <div className={cn("relative", className)} style={{ width, height }} {...props}>
       <Image
         src="/images/isooriginal.webp"
-        alt="Podopalermo Logo"
+        alt="Logo de Podopalermo"
         fill
         sizes={`${width}px`}
         style={{ objectFit: 'contain' }}

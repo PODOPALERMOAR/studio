@@ -1,63 +1,64 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Send, Bot, User } from 'lucide-react';
+import { Send, Bot, User, X, UploadCloud, FileText } from 'lucide-react';
+import { useChatBot } from './ChatBotContext';
+import { LoadingDots } from '@/components/common/LoadingDots';
+import { useToast } from '@/hooks/use-toast';
+import { AnimatePresence, motion } from 'framer-motion';
 
-interface Message {
-  id: string;
-  text: string;
-  isBot: boolean;
-  options?: Array<{
-    label: string;
-    action: string;
-    metadata?: any;
-  }>;
+interface SimpleChatBotProps {
+    onClose?: () => void;
 }
 
-let globalInitialized = false;
+export default function SimpleChatBot({ onClose }: SimpleChatBotProps) {
+  const {
+    messages,
+    addMessage,
+    isLoading,
+    setIsLoading,
+    isInitialized,
+    setIsInitialized,
+    conversationState,
+    setConversationState,
+  } = useChatBot();
 
-export default function SimpleChatBot() {
-  const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-  const mountedRef = useRef(true);
+  const [isFileUploadMode, setIsFileUploadMode] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
-  const scrollToBottom = () => {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const { toast } = useToast();
+
+  const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
+  }, []);
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages]);
+  }, [messages, scrollToBottom]);
 
-  const addMessage = (text: string, isBot: boolean, options?: any[]) => {
-    if (!mountedRef.current) return;
-    
-    const newMessage: Message = {
-      id: `msg-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
-      text,
-      isBot,
-      options
-    };
-    
-    console.log('📝 Adding message:', newMessage.id, text.substring(0, 30) + '...');
-    setMessages(prev => [...prev, newMessage]);
-  };
-
-  const callAPI = async (action: string) => {
+  const callBookingAPI = async (action: string, metadata?: any, userInput?: string, paymentProof?: string) => {
+    setIsLoading(true);
     try {
-      console.log('🔵 Calling API with action:', action);
       const response = await fetch('/api/booking/conversation', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action })
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action,
+          metadata,
+          userInput,
+          paymentProof,
+          userInfo: conversationState.userInfo
+        }),
       });
 
       const result = await response.json();
-      console.log('🟢 API Response:', result);
       
       if (!result.success) {
         throw new Error(result.error || 'Error en la API');
@@ -65,93 +66,105 @@ export default function SimpleChatBot() {
 
       return result.data;
     } catch (error: any) {
-      console.error('🔴 API Error:', error);
-      throw error;
+      addMessage(
+        'Lo siento, hubo un error inesperado. Por favor, intentá de nuevo o contactá a Cecilia por WhatsApp.', 
+        true,
+        [
+          { label: 'Contactar por WhatsApp', action: 'contactWhatsApp', metadata: { phone: '5491167437969' } },
+          { label: 'Volver al inicio', action: 'goHome' }
+        ]
+      );
+      console.error('Error llamando a la API de booking:', error);
+    } finally {
+      setIsLoading(false);
     }
   };
-
-  const handleSendMessage = async (message?: string, action?: string) => {
+  
+  const handleSendMessage = useCallback(async (message?: string, action?: string, metadata?: any) => {
     const messageToSend = message || inputValue.trim();
     
-    if (messageToSend && !action) {
+    if (action && message) {
+      addMessage(message, false);
+    } else if(messageToSend) {
       addMessage(messageToSend, false);
       setInputValue('');
     }
 
-    if (action && message) {
-      addMessage(message, false);
-    }
-
-    setIsLoading(true);
-
-    try {
-      const actionToSend = action || 'userMessage';
-      const response = await callAPI(actionToSend);
+    const response = await callBookingAPI(action || 'userMessage', metadata, messageToSend);
+    
+    if (response) {
+      addMessage(response.message, true, response.options);
       
-      if (mountedRef.current) {
+      if (response.metadata) {
+        setConversationState(prev => ({
+          ...prev,
+          metadata: { ...prev.metadata, ...response.metadata }
+        }));
+      }
+
+      if (response.needsInput && response.inputType === 'file') {
+        setIsFileUploadMode(true);
+      } else {
+        setIsFileUploadMode(false);
+      }
+    }
+  }, [inputValue, addMessage, setConversationState]);
+
+  const handleOptionClick = useCallback((option: any) => {
+    handleSendMessage(option.label, option.action, option.metadata);
+  }, [handleSendMessage]);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 10 * 1024 * 1024) { // 10MB
+        toast({ title: "Archivo demasiado grande", description: "El comprobante no debe exceder los 10MB.", variant: "destructive" });
+        return;
+      }
+      setSelectedFile(file);
+      setInputValue(file.name);
+    }
+  };
+
+  const handleFileUpload = () => {
+    if (!selectedFile) return;
+    
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const dataUri = reader.result as string;
+      setConversationState(prev => ({ ...prev, paymentProof: dataUri }));
+      handleSendMessage(`Comprobante subido: ${selectedFile.name}`, 'verifyPayment', conversationState.metadata);
+      setSelectedFile(null);
+      setInputValue('');
+      setIsFileUploadMode(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    };
+    reader.readAsDataURL(selectedFile);
+  };
+
+  const initializeChat = useCallback(async () => {
+    if (!isInitialized) {
+      const response = await callBookingAPI('start');
+      if (response) {
         addMessage(response.message, true, response.options);
-      }
-    } catch (error) {
-      if (mountedRef.current) {
-        addMessage('Error: No se pudo procesar tu solicitud.', true);
-      }
-    } finally {
-      if (mountedRef.current) {
-        setIsLoading(false);
+        setIsInitialized(true);
       }
     }
-  };
-
-  const handleOptionClick = (option: any) => {
-    handleSendMessage(option.label, option.action);
-  };
-
-  const initializeChat = async () => {
-    if (globalInitialized) {
-      console.log('🟡 Chat already initialized globally');
-      return;
-    }
-
-    console.log('🟢 Initializing chat for the first time');
-    globalInitialized = true;
-    setIsLoading(true);
-
-    try {
-      const response = await callAPI('start');
-      if (mountedRef.current) {
-        addMessage(response.message, true, response.options);
-      }
-    } catch (error) {
-      if (mountedRef.current) {
-        addMessage('¡Hola! Soy tu asistente virtual de PODOPALERMO. Hubo un problema al inicializar, pero estoy aquí para ayudarte.', true);
-      }
-    } finally {
-      if (mountedRef.current) {
-        setIsLoading(false);
-      }
-    }
-  };
+  }, [isInitialized, addMessage, setIsInitialized]);
 
   useEffect(() => {
-    console.log('🔵 SimpleChatBot mounted');
     initializeChat();
-    
-    return () => {
-      console.log('🔴 SimpleChatBot unmounted');
-      mountedRef.current = false;
-      globalInitialized = false; // Reset para permitir nueva inicialización
-    };
-  }, []);
+  }, [initializeChat]);
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
+    if (e.key === 'Enter' && !e.shiftKey && !isFileUploadMode) {
       e.preventDefault();
       handleSendMessage();
     }
   };
 
   return (
-    <div className="h-full flex flex-col">
+    <div className="h-full flex flex-col bg-background">
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b bg-gradient-to-r from-green-600 to-green-700 text-white rounded-t-lg">
         <div className="flex items-center space-x-2">
@@ -161,60 +174,57 @@ export default function SimpleChatBot() {
             <div className="text-xs opacity-90">Reserva tu turno 24/7</div>
           </div>
         </div>
+        {onClose && (
+            <Button variant="ghost" size="icon" onClick={onClose} className="text-white hover:bg-white/20">
+                <X className="h-4 w-4"/>
+            </Button>
+        )}
       </div>
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50">
-        {messages.map((message) => (
-          <div
-            key={message.id}
-            className={`flex ${message.isBot ? 'justify-start' : 'justify-end'}`}
-          >
-            <div
-              className={`max-w-[85%] rounded-lg p-3 ${
-                message.isBot
-                  ? 'bg-white text-gray-800 shadow-sm border'
-                  : 'bg-green-600 text-white'
-              }`}
+        <AnimatePresence>
+          {messages.map((message) => (
+            <motion.div
+              key={message.id}
+              layout
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.3 }}
+              className={`flex ${message.isBot ? 'justify-start' : 'justify-end'}`}
             >
-              <div className="flex items-start space-x-2">
-                {message.isBot && <Bot className="h-4 w-4 mt-0.5 flex-shrink-0 text-green-600" />}
-                <div className="flex-1">
-                  <p className="text-sm whitespace-pre-wrap leading-relaxed">{message.text}</p>
-                  {message.options && (
-                    <div className="mt-3 space-y-2">
-                      {message.options.map((option, index) => (
-                        <Button
-                          key={index}
-                          variant="outline"
-                          size="sm"
-                          className="w-full justify-start text-xs hover:bg-green-50 border-green-200 text-green-700 hover:text-green-800"
-                          onClick={() => handleOptionClick(option)}
-                        >
-                          {option.label}
-                        </Button>
-                      ))}
-                    </div>
-                  )}
+              <div className={`max-w-[85%] rounded-lg p-3 ${
+                  message.isBot ? 'bg-white text-gray-800 shadow-sm border' : 'bg-green-600 text-white'
+              }`}>
+                <div className="flex items-start space-x-2">
+                  {message.isBot && <Bot className="h-4 w-4 mt-0.5 flex-shrink-0 text-green-600" />}
+                  <div className="flex-1">
+                    <p className="text-sm whitespace-pre-wrap leading-relaxed">{message.text}</p>
+                    {message.options && (
+                      <div className="mt-3 space-y-2">
+                        {message.options.map((option, index) => (
+                          <Button key={index} variant="outline" size="sm"
+                            className="w-full justify-start text-xs hover:bg-green-50 border-green-200 text-green-700 hover:text-green-800"
+                            onClick={() => handleOptionClick(option)}>
+                            {option.label}
+                          </Button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  {!message.isBot && <User className="h-4 w-4 mt-0.5 flex-shrink-0" />}
                 </div>
-                {!message.isBot && <User className="h-4 w-4 mt-0.5 flex-shrink-0" />}
               </div>
-            </div>
-          </div>
-        ))}
+            </motion.div>
+          ))}
+        </AnimatePresence>
         {isLoading && (
-          <div className="flex justify-start">
+          <motion.div layout initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex justify-start">
             <div className="bg-white rounded-lg p-3 shadow-sm border">
-              <div className="flex items-center space-x-2">
-                <Bot className="h-4 w-4 text-green-600" />
-                <div className="flex space-x-1">
-                  <div className="w-2 h-2 bg-green-400 rounded-full animate-bounce"></div>
-                  <div className="w-2 h-2 bg-green-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                  <div className="w-2 h-2 bg-green-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
-                </div>
-              </div>
+                <LoadingDots />
             </div>
-          </div>
+          </motion.div>
         )}
         <div ref={messagesEndRef} />
       </div>
@@ -222,25 +232,32 @@ export default function SimpleChatBot() {
       {/* Input */}
       <div className="p-4 border-t bg-white">
         <div className="flex space-x-2">
-          <Input
-            value={inputValue}
-            onChange={(e) => setInputValue(e.target.value)}
-            placeholder="Escribe tu mensaje..."
-            onKeyDown={handleKeyPress}
-            disabled={isLoading}
-            className="flex-1"
-          />
-          <Button
-            onClick={() => handleSendMessage()}
-            disabled={isLoading || !inputValue.trim()}
-            size="icon"
-            className="bg-green-600 hover:bg-green-700"
-          >
-            <Send className="h-4 w-4" />
-          </Button>
+          {isFileUploadMode ? (
+            <>
+              <Input type="file" ref={fileInputRef} onChange={handleFileChange} accept="image/*,.pdf" className="hidden" />
+              <Button variant="outline" onClick={() => fileInputRef.current?.click()} disabled={isLoading} className="flex-1 justify-start font-normal text-muted-foreground">
+                {selectedFile ? <FileText className="h-4 w-4 mr-2 text-primary"/> : <UploadCloud className="h-4 w-4 mr-2" />}
+                {selectedFile ? selectedFile.name : "Seleccionar comprobante..."}
+              </Button>
+              <Button onClick={handleFileUpload} disabled={isLoading || !selectedFile} size="icon" className="bg-green-600 hover:bg-green-700">
+                <Send className="h-4 w-4" />
+              </Button>
+            </>
+          ) : (
+            <>
+              <Input
+                value={inputValue} onChange={(e) => setInputValue(e.target.value)}
+                placeholder="Escribí tu mensaje..." onKeyDown={handleKeyPress}
+                disabled={isLoading} className="flex-1"
+              />
+              <Button onClick={() => handleSendMessage()} disabled={isLoading || !inputValue.trim()} size="icon" className="bg-green-600 hover:bg-green-700">
+                <Send className="h-4 w-4" />
+              </Button>
+            </>
+          )}
         </div>
         <div className="text-xs text-gray-500 mt-2 text-center">
-          Powered by PODOPALERMO AI Assistant
+          Asistente IA de PODOPALERMO
         </div>
       </div>
     </div>

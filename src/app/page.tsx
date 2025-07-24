@@ -3,56 +3,56 @@
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { ArrowRight, User, Gift, Sparkles, X } from 'lucide-react';
+import { ArrowRight, User, Gift, Sparkles, X, Home as HomeIcon } from 'lucide-react';
 import Image from 'next/image';
 import { useToast } from "@/hooks/use-toast";
 import { cn } from '@/lib/utils';
 import Header from '@/components/layout/header';
 import Footer from '@/components/layout/footer';
-import { useState } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import SimpleChatBot from '@/components/chat/SimpleChatBot';
+import ChatBot from '@/components/chat/ChatBot';
 
 export default function Home() {
   const { toast } = useToast();
   const [showBookingAssistant, setShowBookingAssistant] = useState(false);
   
-  const quickActionsConfig = [
-    { title: "Panel Personal", subtitle: "Mis turnos y perfil", icon: User, href: "/my-panel", id: "panel" },
-    { title: "Referidos", subtitle: "Nos recomendaste y queremos agradecerte", icon: Gift, href: "#", id: "referidos", isPlaceholder: true },
-    { title: "Comunidad", subtitle: "Mostra podologia, mostra tu solucion", icon: Sparkles, href: "#", id: "comunidad", isPlaceholder: true },
-  ];
-
-  const handleFindAppointmentClick = () => {
+  const handleFindAppointmentClick = useCallback(() => {
     setShowBookingAssistant(true);
-  };
+  }, []);
+
+  const handleBackToHome = useCallback(() => {
+    setShowBookingAssistant(false);
+  }, []);
+
+  useEffect(() => {
+    // Precargar la imagen del chat para una transición más suave
+    const img = new (window as any).Image();
+    img.src = '/images/hermoso-arbol.jpg';
+  }, []);
+
 
   return (
-    <div className="flex flex-col items-center w-full">
-      <div className="w-full max-w-4xl flex flex-col">
+    <div className="flex flex-col items-center w-full min-h-screen bg-background">
+      <div className="w-full max-w-4xl flex flex-col flex-grow">
         <Header />
-        <main className="flex-grow flex flex-col items-center p-4 relative">
+        <main className="flex-grow flex flex-col items-center p-4">
           <AnimatePresence mode="wait">
             {!showBookingAssistant ? (
-              <motion.div 
-                key="homepage"
-                initial={{ opacity: 1 }}
-                exit={{ opacity: 0, y: -20 }}
-                transition={{ duration: 0.4, ease: "easeInOut" }}
-                className="w-full flex flex-col"
+              <motion.div
+                key="homepage-content"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.5, ease: "easeInOut" }}
+                className="w-full flex flex-col items-center justify-center flex-grow text-center"
               >
                 <Card className="w-full shadow-xl rounded-xl mb-6 overflow-hidden bg-transparent relative aspect-[4/3] sm:aspect-video">
-                  {/* Efectos de brillo que se mueven por encima de la imagen */}
                   <div className="absolute inset-0 z-10 pointer-events-none overflow-hidden rounded-xl">
-                    {/* Fondo con brillo pulsante */}
                     <div className="absolute inset-0 w-full h-full bg-white/5 animate-pulse-glow"></div>
-                    
-                    {/* Efecto de brillo principal diagonal blanco */}
                     <div className="absolute inset-0 w-full h-full">
                       <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-r from-transparent via-white/60 to-transparent skew-x-[-15deg] animate-shine-effect"></div>
                     </div>
-                    
-                    {/* Borde más visible para dar profundidad */}
                     <div className="absolute inset-0 w-full h-full border-2 border-white/20 rounded-xl"></div>
                   </div>
                   
@@ -63,6 +63,7 @@ export default function Home() {
                     style={{objectFit: "cover"}}
                     priority
                     className="z-0"
+                    data-ai-hint="nature tree"
                   />
                   <div className="absolute inset-x-0 bottom-0 h-2/5 z-[1] bg-gradient-to-t from-black/75 via-black/45 to-transparent pointer-events-none"></div>
 
@@ -71,9 +72,9 @@ export default function Home() {
                     "flex flex-col items-center text-center space-y-2", 
                     "sm:flex-row sm:items-end sm:justify-between sm:text-left sm:space-y-0" 
                   )}>
-                    <div className="sm:max-w-[calc(100%-150px)]">
+                    <div className="sm:max-w-[calc(100%-200px)]">
                       <h1 className="text-white text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold leading-tight">
-                        Encontrar turno disponible
+                        Encontrá tu turno disponible
                       </h1>
                       <p className="text-gray-200 text-xs sm:text-sm mt-1 max-w-xs sm:max-w-sm">
                         En menos de 5 minutos con podólogos expertos.
@@ -99,58 +100,33 @@ export default function Home() {
                   </div>
                 </Card>
 
-                <div>
-                  <h2 className="text-xl sm:text-2xl font-bold leading-tight tracking-tight text-foreground px-4 pb-3 pt-5">Acciones Rápidas</h2>
-                  <div className="grid grid-cols-[repeat(auto-fit,minmax(180px,1fr))] sm:grid-cols-3 gap-3 sm:gap-4 p-4">
-                    {quickActionsConfig.map((action) => (
-                      <Link
-                        href={action.href}
-                        key={action.id}
-                        onClick={action.isPlaceholder ? (e) => { e.preventDefault(); toast({ title: action.title, description: "Esta función estará disponible próximamente.", duration: 3000});} : undefined}
-                        className={cn(
-                          "flex flex-1 gap-2 sm:gap-3 rounded-xl p-4 sm:p-6 items-center transition-all cursor-pointer shadow-md min-h-[100px] sm:min-h-[120px]",
-                          "bg-card border border-border hover:bg-muted hover:border-primary/30 hover:shadow-lg text-foreground",
-                          action.isPlaceholder && "opacity-70"
-                        )}
-                      >
-                        <action.icon className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
-                        <div className="flex flex-col items-start text-left">
-                          <h3 className="text-sm sm:text-base font-bold leading-tight">{action.title}</h3>
-                          {action.subtitle && <p className="text-xs text-muted-foreground mt-0.5">{action.subtitle}</p>}
-                        </div>
-                      </Link>
-                    ))}
-                  </div>
-                </div>
               </motion.div>
             ) : (
-              <motion.div 
+              <motion.div
                 key="booking-assistant"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -20 }}
                 transition={{ duration: 0.4, ease: "easeInOut" }}
-                className="w-full flex flex-col"
+                className="w-full flex-grow flex flex-col"
               >
                 <div className="flex items-center justify-between mb-4">
                   <h2 className="text-xl sm:text-2xl font-bold leading-tight tracking-tight text-foreground">
                     Asistente de Turnos
                   </h2>
                   <Button 
-                    variant="ghost" 
+                    variant="outline" 
                     size="sm" 
-                    onClick={() => setShowBookingAssistant(false)}
+                    onClick={handleBackToHome}
                     className="flex items-center gap-1 text-muted-foreground hover:text-foreground"
                   >
-                    <X className="h-4 w-4" />
-                    <span>Volver</span>
+                    <HomeIcon className="h-4 w-4" />
+                    <span>Volver al Inicio</span>
                   </Button>
                 </div>
                 
-                <Card className="w-full shadow-lg rounded-xl overflow-hidden border-0">
-                  <div className="h-[600px] sm:h-[700px]">
-                    <SimpleChatBot />
-                  </div>
+                <Card className="w-full flex-grow shadow-lg rounded-xl overflow-hidden border">
+                  <ChatBot embedded />
                 </Card>
               </motion.div>
             )}
