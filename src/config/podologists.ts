@@ -54,11 +54,11 @@ export const podologists: PodologistProfile[] = [
 ];
 
 // Helper para encontrar podólogo por clave
-export function findPodologistByKey(key: string): PodologistProfile | undefined {
+export async function findPodologistByKey(key: string): Promise<PodologistProfile | undefined> {
   return podologists.find(p => p.key.toLowerCase() === key.toLowerCase());
 }
 
 // Helper para obtener podólogos con calendario configurado
-export function getActivePodologists(): PodologistProfile[] {
+export async function getActivePodologists(): Promise<PodologistProfile[]> {
   return podologists.filter(p => p.calendarId && p.calendarId.trim() !== '');
 }
