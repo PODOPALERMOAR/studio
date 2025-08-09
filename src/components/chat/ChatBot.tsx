@@ -18,21 +18,32 @@ interface ChatBotProps {
 
 export default function ChatBot({ embedded = false }: ChatBotProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const { isInitialized, addMessage } = useChatBot();
+  const { isInitialized, addMessage, setMessages } = useChatBot();
 
-  const handleOpen = () => {
+  const handleOpen = useCallback(() => {
     if (!isInitialized) {
-      addMessage(
-        '¡Hola! Soy tu asistente virtual de PODOPALERMO 👣✨\n\nEstoy aquí para ayudarte a encontrar y reservar tu próximo turno de forma rápida y sencilla. ¿Comenzamos?',
-        true,
-        [
-          { label: 'Buscar próximo turno disponible', action: 'findNext', metadata: { podologistKey: 'any' } },
-          { label: 'Elegir podólogo/a específico', action: 'choosePodologist' }
-        ]
-      );
+      // Iniciar la conversación directamente buscando el próximo turno
+      const fetchInitialSlot = async () => {
+        try {
+          const response = await fetch('/api/booking/conversation', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'start' }),
+          });
+          const result = await response.json();
+          if (result.success) {
+            addMessage(result.data.message, true, result.data.options);
+          } else {
+            throw new Error(result.error);
+          }
+        } catch (error) {
+          addMessage('Lo siento, no pude buscar turnos. Intenta más tarde.', true);
+        }
+      };
+      fetchInitialSlot();
     }
     setIsOpen(true);
-  };
+  }, [isInitialized, addMessage]);
   
   const handleClose = () => {
     setIsOpen(false);

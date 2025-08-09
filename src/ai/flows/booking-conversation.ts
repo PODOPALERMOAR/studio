@@ -44,25 +44,8 @@ export async function bookingConversation(input: BookingConversationInput): Prom
       case 'start':
       case 'goHome':
         const welcomeResult = await startBookingConversation();
-        return {
-          response: welcomeResult.welcomeMessage,
-          options: welcomeResult.initialOptions,
-        };
-
-      case 'choosePodologist':
-        const activePodologists = getActivePodologists();
-        return {
-          response: "¿Con qué podólogo/a te gustaría agendar tu turno?",
-          options: [
-            ...activePodologists.map(p => ({
-              label: `${p.name}${p.specialties ? ` - ${p.specialties[0]}` : ''}`,
-              action: 'findNext',
-              metadata: { podologistKey: p.key }
-            })),
-            { label: "Cualquiera disponible", action: 'findNext', metadata: { podologistKey: 'any' } },
-            { label: "Volver al menú", action: 'goHome' }
-          ],
-        };
+        // Simplificado para ir directo a la búsqueda
+        return findNextAvailableSlot({ podologistKey: 'any' });
 
       case 'findNext':
         const slotResult = await findNextAvailableSlot({

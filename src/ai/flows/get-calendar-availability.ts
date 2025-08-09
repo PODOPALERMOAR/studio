@@ -68,15 +68,7 @@ export async function getCalendarAvailability(input?: GetCalendarAvailabilityInp
   debugInfo += `Consultando ${calendarsToQuery.length} calendario(s): ${calendarsToQuery.map(p=>p.name).join(', ')}\n`;
 
   try {
-    // Usar Google Calendar real (comentamos la simulación)
-    // if (process.env.NODE_ENV !== 'production') {
-    //   debugInfo += "Usando datos simulados para desarrollo\n";
-    //   const mockSlots = generateMockAvailableSlots(input?.podologistKey);
-    //   debugInfo += `Generados ${mockSlots.length} slots simulados\n`;
-    //   return { availableSlots: mockSlots, debugInfo };
-    // }
-    
-    // Autenticación con Google Calendar
+    // Usar Google Calendar real 
     const auth = new google.auth.GoogleAuth({
       scopes: ['https://www.googleapis.com/auth/calendar.readonly', 'https://www.googleapis.com/auth/calendar.events'],
     });
@@ -113,7 +105,8 @@ export async function getCalendarAvailability(input?: GetCalendarAvailabilityInp
             .filter(event => {
               const title = (event.summary || "").trim().toLowerCase();
               const hasStartDate = !!(event.start?.dateTime || event.start?.date);
-              const isOcupar = title === 'ocupar';
+              // Acepta cualquier variación de "ocupar"
+              const isOcupar = title.includes('ocupar');
               
               if (!isOcupar && title.includes('ocupar')) {
                 debugInfo += `    Posible error de tipeo: "${event.summary}" no es exactamente "ocupar"\n`;

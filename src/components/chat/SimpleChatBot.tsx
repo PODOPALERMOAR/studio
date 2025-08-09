@@ -90,10 +90,10 @@ export default function SimpleChatBot({ onClose }: SimpleChatBotProps) {
       setInputValue('');
     }
 
-    const response = await callBookingAPI(action || 'userMessage', metadata, messageToSend);
+    const response = await callBookingAPI(action || 'collectUserInfo', metadata, messageToSend);
     
     if (response) {
-      addMessage(response.message, true, response.options);
+      addMessage(response.message, true, response.options, response.needsInput, response.inputPlaceholder);
       
       if (response.metadata) {
         setConversationState(prev => ({
@@ -108,7 +108,7 @@ export default function SimpleChatBot({ onClose }: SimpleChatBotProps) {
         setIsFileUploadMode(false);
       }
     }
-  }, [inputValue, addMessage, setConversationState]);
+  }, [inputValue, addMessage, setConversationState, conversationState]);
 
   const handleOptionClick = useCallback((option: any) => {
     handleSendMessage(option.label, option.action, option.metadata);
@@ -130,10 +130,14 @@ export default function SimpleChatBot({ onClose }: SimpleChatBotProps) {
     if (!selectedFile) return;
     
     const reader = new FileReader();
-    reader.onloadend = () => {
+    reader.onloadend = async () => {
       const dataUri = reader.result as string;
-      setConversationState(prev => ({ ...prev, paymentProof: dataUri }));
-      handleSendMessage(`Comprobante subido: ${selectedFile.name}`, 'verifyPayment', conversationState.metadata);
+      const response = await callBookingAPI('verifyPayment', conversationState.metadata, `Comprobante subido: ${selectedFile.name}`, dataUri);
+      
+      if (response) {
+          addMessage(response.message, true, response.options, response.needsInput, response.inputPlaceholder);
+      }
+
       setSelectedFile(null);
       setInputValue('');
       setIsFileUploadMode(false);
@@ -144,13 +148,16 @@ export default function SimpleChatBot({ onClose }: SimpleChatBotProps) {
 
   const initializeChat = useCallback(async () => {
     if (!isInitialized) {
+      setIsInitialized(true);
       const response = await callBookingAPI('start');
       if (response) {
-        addMessage(response.message, true, response.options);
-        setIsInitialized(true);
+        addMessage(response.message, true, response.options, response.needsInput, response.inputPlaceholder);
+        if (response.metadata) {
+          setConversationState(prev => ({ ...prev, metadata: response.metadata }));
+        }
       }
     }
-  }, [isInitialized, addMessage, setIsInitialized]);
+  }, [isInitialized, addMessage, setIsInitialized, setConversationState]);
 
   useEffect(() => {
     initializeChat();
@@ -247,7 +254,8 @@ export default function SimpleChatBot({ onClose }: SimpleChatBotProps) {
             <>
               <Input
                 value={inputValue} onChange={(e) => setInputValue(e.target.value)}
-                placeholder="Escribí tu mensaje..." onKeyDown={handleKeyPress}
+                placeholder={messages[messages.length - 1]?.inputPlaceholder || "Escribe tu mensaje..."}
+                onKeyDown={handleKeyPress}
                 disabled={isLoading} className="flex-1"
               />
               <Button onClick={() => handleSendMessage()} disabled={isLoading || !inputValue.trim()} size="icon" className="bg-green-600 hover:bg-green-700">

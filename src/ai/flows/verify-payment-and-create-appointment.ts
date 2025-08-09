@@ -5,6 +5,7 @@
  */
 
 import { z } from 'zod';
+import { ai } from '@/ai/genkit';
 import { createAppointment, type CreateAppointmentInput } from './create-appointment';
 import { format } from 'date-fns';
 import { getPaymentDetailsForPodologist, EXPECTED_PAYMENT_AMOUNT, type PaymentAccountDetails } from '@/config/paymentDetails';
@@ -46,6 +47,29 @@ const PaymentVerificationOutputSchema = z.object({
   errorReadingProof: z.boolean().default(false).describe("True si la IA no pudo leer o interpretar el comprobante."),
 });
 
+const paymentVerificationPrompt = ai.definePrompt({
+    name: "paymentVerificationPrompt",
+    input: { schema: z.object({ 
+        expectedAmount: z.number(), 
+        currentDate: z.string(), 
+        accountHolderNameToVerify: z.string(),
+        paymentProof: z.string() 
+    }) },
+    output: { schema: PaymentVerificationOutputSchema },
+    prompt: `Sos un asistente experto en analizar comprobantes de transferencia bancaria de Argentina. Tu única tarea es validar la imagen adjunta y extraer la información clave.
+
+Validá el siguiente comprobante de pago:
+{{media url=paymentProof}}
+
+Criterios de validación:
+1.  **Monto Exacto**: El monto debe ser exactamente {{expectedAmount}} ARS.
+2.  **Fecha Reciente**: La fecha debe ser hoy ({{currentDate}}) o el día anterior.
+3.  **Destinatario Correcto**: El nombre del destinatario debe ser "{{accountHolderNameToVerify}}". Buscá variaciones o aproximaciones del nombre.
+4.  **Legitimidad**: El comprobante debe parecer real y no una captura de pantalla editada o un texto simple.
+
+Respondé en el formato JSON especificado. Si no podés leer el comprobante o está incompleto, marcá 'errorReadingProof' como true y explicá el problema en 'verificationNotes'. Si el comprobante es inválido por otra razón, explicá por qué en 'verificationNotes'.`
+});
+
 export async function verifyPaymentAndCreateAppointment(input: VerifyPaymentAndCreateAppointmentInput): Promise<VerifyPaymentAndCreateAppointmentOutput> {
   let debugInfo = `Iniciando verificación de pago. Monto esperado: ${EXPECTED_PAYMENT_AMOUNT}. Podólogo: ${input.podologistKey}\n`;
   const currentDateFormatted = format(new Date(), 'yyyy-MM-dd');
@@ -63,40 +87,38 @@ export async function verifyPaymentAndCreateAppointment(input: VerifyPaymentAndC
   debugInfo += `Detalles de pago para evento: ${paymentDetailsStringForCalendar}\n`;
 
   try {
-    // Aquí iría la verificación con IA usando Genkit
-    // Por ahora simulamos una verificación exitosa
-    const mockVerificationResult = {
-      isProofValid: true,
-      amountDetected: EXPECTED_PAYMENT_AMOUNT,
-      dateDetected: currentDateFormatted,
-      isAmountCorrect: true,
-      isDateRecent: true,
-      recipientMatches: true,
-      verificationNotes: "Comprobante válido.",
-      errorReadingProof: false,
-    };
+    const { output: verificationResult } = await paymentVerificationPrompt({
+        expectedAmount: EXPECTED_PAYMENT_AMOUNT,
+        currentDate: currentDateFormatted,
+        accountHolderNameToVerify: paymentAccountDetails?.accountHolderName || "Nombre No Encontrado",
+        paymentProof: input.paymentProofDataUri
+    });
 
-    debugInfo += `Resultado de verificación IA: ${JSON.stringify(mockVerificationResult)}\n`;
+    if (!verificationResult) {
+        throw new Error("La verificación de IA no devolvió un resultado.");
+    }
 
-    if (mockVerificationResult.errorReadingProof) {
-      debugInfo += `IA indicó error leyendo comprobante: ${mockVerificationResult.verificationNotes}\n`;
+    debugInfo += `Resultado de verificación IA: ${JSON.stringify(verificationResult)}\n`;
+
+    if (verificationResult.errorReadingProof) {
+      debugInfo += `IA indicó error leyendo comprobante: ${verificationResult.verificationNotes}\n`;
       return {
         success: false,
-        message: `No pudimos leer tu comprobante: ${mockVerificationResult.verificationNotes}`,
-        personalizedMessage: `No pudimos leer tu comprobante: ${mockVerificationResult.verificationNotes}. Asegúrate de que la imagen/PDF sea claro y completo.`,
+        message: `No pudimos leer tu comprobante: ${verificationResult.verificationNotes}`,
+        personalizedMessage: `No pudimos leer tu comprobante: ${verificationResult.verificationNotes}. Asegúrate de que la imagen/PDF sea claro y completo.`,
         debugInfo: debugInfo,
       };
     }
 
-    if (!mockVerificationResult.isProofValid) {
+    if (!verificationResult.isProofValid) {
       const errorReasons: string[] = [];
-      if (!mockVerificationResult.isAmountCorrect) {
-        errorReasons.push(`el monto transferido${mockVerificationResult.amountDetected !== null ? ` ($${mockVerificationResult.amountDetected.toLocaleString()})` : ''} no es el esperado`);
+      if (!verificationResult.isAmountCorrect) {
+        errorReasons.push(`el monto transferido${verificationResult.amountDetected !== null ? ` ($${verificationResult.amountDetected.toLocaleString()})` : ''} no es el esperado`);
       }
-      if (!mockVerificationResult.isDateRecent) {
-        errorReasons.push(`la fecha del comprobante${mockVerificationResult.dateDetected ? ` (${mockVerificationResult.dateDetected})` : ''} no es válida`);
+      if (!verificationResult.isDateRecent) {
+        errorReasons.push(`la fecha del comprobante${verificationResult.dateDetected ? ` (${verificationResult.dateDetected})` : ''} no es válida`);
       }
-      if (paymentAccountDetails && mockVerificationResult.recipientMatches === false) {
+      if (paymentAccountDetails && verificationResult.recipientMatches === false) {
         errorReasons.push(`el destinatario del pago no es el correcto`);
       }
       
@@ -108,7 +130,7 @@ export async function verifyPaymentAndCreateAppointment(input: VerifyPaymentAndC
           mainErrorMessage += " por los siguientes motivos:\n- " + errorReasons.join("\n- ") + ".";
         }
       } else {
-        mainErrorMessage += `: ${mockVerificationResult.verificationNotes}`;
+        mainErrorMessage += `: ${verificationResult.verificationNotes}`;
       }
       
       debugInfo += `Comprobante inválido. Mensaje: "${mainErrorMessage}"\n`;

@@ -2,7 +2,7 @@
 
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { ArrowRight, Home as HomeIcon } from 'lucide-react';
+import { ArrowRight, Home } from 'lucide-react';
 import Image from 'next/image';
 import { useToast } from "@/hooks/use-toast";
 import { cn } from '@/lib/utils';
@@ -12,7 +12,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import ChatBot from '@/components/chat/ChatBot';
 
-export default function Home() {
+export default function HomePage() {
   const { toast } = useToast();
   const [showBookingAssistant, setShowBookingAssistant] = useState(false);
   
@@ -119,7 +119,7 @@ export default function Home() {
                     onClick={handleBackToHome}
                     className="flex items-center gap-1 text-muted-foreground hover:text-foreground"
                   >
-                    <HomeIcon className="h-4 w-4" />
+                    <Home className="h-4 w-4" />
                     <span>Volver al Inicio</span>
                   </Button>
                 </div>
