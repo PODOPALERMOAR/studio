@@ -173,23 +173,26 @@ export default function SimpleChatBot({ onClose }: SimpleChatBotProps) {
   return (
     <div className="h-full flex flex-col bg-background">
       {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b bg-gradient-to-r from-green-600 to-green-700 text-white rounded-t-lg">
-        <div className="flex items-center space-x-2">
-          <Bot className="h-5 w-5" />
+      <div className="flex items-center justify-between p-4 border-b bg-background">
+        <div className="flex items-center space-x-3">
+          <div className="relative flex items-center justify-center w-10 h-10 rounded-full bg-primary/10 text-primary">
+              <Bot className="h-6 w-6" />
+              <span className="absolute bottom-0 right-0 block h-2.5 w-2.5 rounded-full bg-green-500 ring-2 ring-background" />
+          </div>
           <div>
-            <span className="font-semibold">Asistente PODOPALERMO</span>
-            <div className="text-xs opacity-90">Reserva tu turno 24/7</div>
+            <span className="font-semibold text-foreground">Asistente de Turnos</span>
+            <div className="text-xs text-muted-foreground">En línea</div>
           </div>
         </div>
         {onClose && (
-            <Button variant="ghost" size="icon" onClick={onClose} className="text-white hover:bg-white/20">
+            <Button variant="ghost" size="icon" onClick={onClose} className="text-muted-foreground hover:bg-accent">
                 <X className="h-4 w-4"/>
             </Button>
         )}
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50">
+      <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50/50">
         <AnimatePresence>
           {messages.map((message) => (
             <motion.div
@@ -199,30 +202,26 @@ export default function SimpleChatBot({ onClose }: SimpleChatBotProps) {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.3 }}
-              className={`flex ${message.isBot ? 'justify-start' : 'justify-end'}`}
+              className={`flex items-end gap-2 ${message.isBot ? 'justify-start' : 'justify-end'}`}
             >
+              {message.isBot && <Bot className="h-5 w-5 mb-2 text-muted-foreground flex-shrink-0" />}
               <div className={`max-w-[85%] rounded-lg p-3 ${
-                  message.isBot ? 'bg-white text-gray-800 shadow-sm border' : 'bg-green-600 text-white'
+                  message.isBot ? 'bg-white text-foreground shadow-sm border rounded-tl-none' : 'bg-primary text-primary-foreground rounded-tr-none'
               }`}>
-                <div className="flex items-start space-x-2">
-                  {message.isBot && <Bot className="h-4 w-4 mt-0.5 flex-shrink-0 text-green-600" />}
-                  <div className="flex-1">
                     <p className="text-sm whitespace-pre-wrap leading-relaxed">{message.text}</p>
                     {message.options && (
-                      <div className="mt-3 space-y-2">
+                      <div className="mt-3 flex flex-col items-start space-y-2">
                         {message.options.map((option, index) => (
                           <Button key={index} variant="outline" size="sm"
-                            className="w-full justify-start text-xs hover:bg-green-50 border-green-200 text-green-700 hover:text-green-800"
+                            className="w-auto justify-start text-xs h-auto py-1.5 px-3 rounded-full hover:bg-primary/10 border-primary/20 text-primary hover:text-primary/90"
                             onClick={() => handleOptionClick(option)}>
                             {option.label}
                           </Button>
                         ))}
                       </div>
                     )}
-                  </div>
-                  {!message.isBot && <User className="h-4 w-4 mt-0.5 flex-shrink-0" />}
-                </div>
               </div>
+              {!message.isBot && <User className="h-5 w-5 mb-2 text-muted-foreground flex-shrink-0" />}
             </motion.div>
           ))}
         </AnimatePresence>
@@ -237,7 +236,7 @@ export default function SimpleChatBot({ onClose }: SimpleChatBotProps) {
       </div>
 
       {/* Input */}
-      <div className="p-4 border-t bg-white">
+      <div className="p-4 border-t bg-background">
         <div className="flex space-x-2">
           {isFileUploadMode ? (
             <>
@@ -246,7 +245,7 @@ export default function SimpleChatBot({ onClose }: SimpleChatBotProps) {
                 {selectedFile ? <FileText className="h-4 w-4 mr-2 text-primary"/> : <UploadCloud className="h-4 w-4 mr-2" />}
                 {selectedFile ? selectedFile.name : "Seleccionar comprobante..."}
               </Button>
-              <Button onClick={handleFileUpload} disabled={isLoading || !selectedFile} size="icon" className="bg-green-600 hover:bg-green-700">
+              <Button onClick={handleFileUpload} disabled={isLoading || !selectedFile} size="icon" className="bg-primary hover:bg-primary/90">
                 <Send className="h-4 w-4" />
               </Button>
             </>
@@ -258,14 +257,11 @@ export default function SimpleChatBot({ onClose }: SimpleChatBotProps) {
                 onKeyDown={handleKeyPress}
                 disabled={isLoading} className="flex-1"
               />
-              <Button onClick={() => handleSendMessage()} disabled={isLoading || !inputValue.trim()} size="icon" className="bg-green-600 hover:bg-green-700">
+              <Button onClick={() => handleSendMessage()} disabled={isLoading || !inputValue.trim()} size="icon" className="bg-primary hover:bg-primary/90">
                 <Send className="h-4 w-4" />
               </Button>
             </>
           )}
-        </div>
-        <div className="text-xs text-gray-500 mt-2 text-center">
-          Asistente IA de PODOPALERMO
         </div>
       </div>
     </div>

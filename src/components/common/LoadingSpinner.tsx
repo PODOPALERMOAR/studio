@@ -15,6 +15,6 @@ export default function LoadingSpinner({ size = 'md', className }: LoadingSpinne
   };
 
   return (
-    <div className={cn('animate-spin rounded-full border-2 border-gray-300 border-t-green-600', sizeClasses[size], className)} />
+    <div className={cn('animate-spin rounded-full border-2 border-border border-t-primary', sizeClasses[size], className)} />
   );
 }

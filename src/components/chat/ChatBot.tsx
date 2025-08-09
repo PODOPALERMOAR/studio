@@ -64,7 +64,7 @@ export default function ChatBot({ embedded = false }: ChatBotProps) {
       >
         <Button
           onClick={handleOpen}
-          className="h-14 w-14 rounded-full bg-green-600 hover:bg-green-700 shadow-lg hover:shadow-xl transition-all duration-200"
+          className="h-14 w-14 rounded-full bg-primary hover:bg-primary/90 shadow-lg hover:shadow-xl transition-all duration-200"
           size="icon"
           aria-label="Abrir asistente de turnos"
         >

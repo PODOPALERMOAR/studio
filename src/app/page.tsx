@@ -2,7 +2,7 @@
 
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { ArrowRight, Home } from 'lucide-react';
+import { ArrowRight, HomeIcon } from 'lucide-react';
 import Image from 'next/image';
 import { useToast } from "@/hooks/use-toast";
 import { cn } from '@/lib/utils';
@@ -119,7 +119,7 @@ export default function HomePage() {
                     onClick={handleBackToHome}
                     className="flex items-center gap-1 text-muted-foreground hover:text-foreground"
                   >
-                    <Home className="h-4 w-4" />
+                    <HomeIcon className="h-4 w-4" />
                     <span>Volver al Inicio</span>
                   </Button>
                 </div>
