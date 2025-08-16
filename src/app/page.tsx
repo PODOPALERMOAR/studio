@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Button } from '@/components/ui/button';
@@ -10,10 +11,9 @@ import Header from '@/components/layout/header';
 import Footer from '@/components/layout/footer';
 import { useState, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import ChatBot from '@/components/chat/ChatBot';
+import TestChatBot from '@/components/chat/TestChatBot';
 
 export default function HomePage() {
-  const { toast } = useToast();
   const [showBookingAssistant, setShowBookingAssistant] = useState(false);
   
   const handleFindAppointmentClick = useCallback(() => {
@@ -73,10 +73,10 @@ export default function HomePage() {
                   )}>
                     <div className="sm:max-w-[calc(100%-200px)]">
                       <h1 className="text-white text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold leading-tight">
-                        Encontrá tu turno disponible
+                        El cuidado que tus pies merecen
                       </h1>
                       <p className="text-gray-200 text-xs sm:text-sm mt-1 max-w-xs sm:max-w-sm">
-                        En menos de 5 minutos con podólogos expertos.
+                        Agendá tu turno con nuestro asistente inteligente en menos de 3 minutos.
                       </p>
                     </div>
                     <div className="relative">
@@ -125,7 +125,7 @@ export default function HomePage() {
                 </div>
                 
                 <Card className="w-full flex-grow shadow-lg rounded-xl overflow-hidden border">
-                  <ChatBot embedded />
+                  <TestChatBot />
                 </Card>
               </motion.div>
             )}
@@ -136,3 +136,4 @@ export default function HomePage() {
     </div>
   );
 }
+

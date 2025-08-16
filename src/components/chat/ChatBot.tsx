@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useRef, useEffect, useState, useCallback } from 'react';
@@ -90,3 +91,4 @@ export default function ChatBot({ embedded = false }: ChatBotProps) {
     </>
   );
 }
+
