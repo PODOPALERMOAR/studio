@@ -11,7 +11,7 @@ import { useChatBot } from './ChatBotContext';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { LoadingDots } from '@/components/common/LoadingDots';
-import SimpleChatBot from './SimpleChatBot';
+import BookingWizard from '@/components/booking/BookingWizard';
 
 interface ChatBotProps {
   embedded?: boolean;
@@ -51,7 +51,25 @@ export default function ChatBot({ embedded = false }: ChatBotProps) {
   };
 
   if (embedded) {
-    return <SimpleChatBot />;
+    return (
+        <Card className="h-full w-full flex flex-col shadow-2xl border-0 overflow-hidden">
+            <div className="flex items-center justify-between p-4 border-b bg-gradient-to-r from-green-600 to-green-700 text-white rounded-t-lg">
+                <div className="flex items-center space-x-2">
+                    <Bot className="h-5 w-5" />
+                    <div>
+                        <span className="font-semibold">Asistente PODOPALERMO</span>
+                        <div className="text-xs opacity-90">Reserva tu turno 24/7</div>
+                    </div>
+                </div>
+                {onClose && (
+                    <Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8 text-white hover:bg-white/20">
+                        <X className="h-4 w-4" />
+                    </Button>
+                )}
+            </div>
+            <BookingWizard />
+        </Card>
+    );
   }
 
   // Renderizado para modo flotante (botón + ventana emergente)
@@ -83,7 +101,19 @@ export default function ChatBot({ embedded = false }: ChatBotProps) {
             className="fixed bottom-24 right-6 z-50 w-96 h-[600px] max-w-[calc(100vw-2rem)] max-h-[calc(100vh-8rem)]"
           >
             <Card className="h-full w-full flex flex-col shadow-2xl border-0 overflow-hidden">
-                <SimpleChatBot onClose={handleClose} />
+                 <div className="flex items-center justify-between p-4 border-b bg-gradient-to-r from-green-600 to-green-700 text-white rounded-t-lg">
+                    <div className="flex items-center space-x-2">
+                        <Bot className="h-5 w-5" />
+                        <div>
+                            <span className="font-semibold">Asistente PODOPALERMO</span>
+                            <div className="text-xs opacity-90">Reserva tu turno 24/7</div>
+                        </div>
+                    </div>
+                    <Button variant="ghost" size="icon" onClick={handleClose} className="h-8 w-8 text-white hover:bg-white/20">
+                        <X className="h-4 w-4" />
+                    </Button>
+                </div>
+                <BookingWizard />
             </Card>
           </motion.div>
         )}
@@ -91,4 +121,3 @@ export default function ChatBot({ embedded = false }: ChatBotProps) {
     </>
   );
 }
-
