@@ -11,7 +11,7 @@ import Header from '@/components/layout/header';
 import Footer from '@/components/layout/footer';
 import { useState, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import TestChatBot from '@/components/chat/TestChatBot';
+import SimpleChatBot from '@/components/chat/SimpleChatBot';
 
 export default function HomePage() {
   const [showBookingAssistant, setShowBookingAssistant] = useState(false);
@@ -125,7 +125,7 @@ export default function HomePage() {
                 </div>
                 
                 <Card className="w-full flex-grow shadow-lg rounded-xl overflow-hidden border">
-                  <TestChatBot />
+                  <SimpleChatBot />
                 </Card>
               </motion.div>
             )}
@@ -136,4 +136,3 @@ export default function HomePage() {
     </div>
   );
 }
-

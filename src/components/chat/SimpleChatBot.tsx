@@ -44,37 +44,46 @@ export default function SimpleChatBot({ onClose }: SimpleChatBotProps) {
   const callBookingAPI = async (action: string, metadata?: any, userInput?: string, paymentProof?: string) => {
     setIsLoading(true);
     try {
-      const response = await fetch('/api/booking/conversation', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          action,
-          metadata,
-          userInput,
-          paymentProof,
-          userInfo: conversationState.userInfo
-        }),
-      });
-
-      const result = await response.json();
+      // SIMULACIÓN DE API
+      console.log('Simulando API:', { action, metadata, userInput });
+      await new Promise(res => setTimeout(res, 1000));
       
-      if (!result.success) {
-        throw new Error(result.error || 'Error en la API');
+      let response: any;
+      
+      if (action === 'start' || action === 'goHome' || action === 'findNext') {
+        response = { 
+            message: '¡Hola! Encontré un turno disponible para vos. Es con la Podóloga SILVIA, mañana a las 10:00. ¿Te gustaría reservarlo?',
+            options: [
+                { label: 'Sí, ¡perfecto!', action: 'confirmSlot' },
+                { label: 'Ver otro horario', action: 'findNext' },
+                { label: 'Quiero elegir podólogo', action: 'choosePodologist' }
+            ]
+        };
+      } else if (action === 'confirmSlot') {
+        response = {
+            message: '¡Genial! Para confirmar, necesito tu nombre completo:',
+            needsInput: true,
+            inputPlaceholder: 'Escribí tu nombre...',
+            metadata: { step: 'collectName' }
+        };
+      } else {
+         response = {
+            message: 'Gracias. Ahora tu número de teléfono:',
+            needsInput: true,
+            inputPlaceholder: 'Ej: 11 2345 6789',
+            metadata: { step: 'collectPhone' }
+        };
       }
+      
+      return response;
 
-      return result.data;
     } catch (error: any) {
       addMessage(
-        'Lo siento, hubo un error inesperado. Por favor, intentá de nuevo o contactá a Cecilia por WhatsApp.', 
+        'Lo siento, hubo un error inesperado. Por favor, intentá de nuevo.', 
         true,
-        [
-          { label: 'Contactar por WhatsApp', action: 'contactWhatsApp', metadata: { phone: '5491167437969' } },
-          { label: 'Volver al inicio', action: 'goHome' }
-        ]
+        [{ label: 'Empezar de nuevo', action: 'start' }]
       );
-      console.error('Error llamando a la API de booking:', error);
+      console.error('Error en la simulación de API:', error);
     } finally {
       setIsLoading(false);
     }
@@ -82,7 +91,8 @@ export default function SimpleChatBot({ onClose }: SimpleChatBotProps) {
   
   const handleSendMessage = useCallback(async (message?: string, action?: string, metadata?: any) => {
     const messageToSend = message || inputValue.trim();
-    
+    if (!messageToSend && !action) return;
+
     if (action && message) {
       addMessage(message, false);
     } else if(messageToSend) {
@@ -90,7 +100,7 @@ export default function SimpleChatBot({ onClose }: SimpleChatBotProps) {
       setInputValue('');
     }
 
-    const response = await callBookingAPI(action || 'collectUserInfo', metadata, messageToSend);
+    const response = await callBookingAPI(action || 'userInput', metadata, messageToSend);
     
     if (response) {
       addMessage(response.message, true, response.options, response.needsInput, response.inputPlaceholder);
@@ -115,35 +125,11 @@ export default function SimpleChatBot({ onClose }: SimpleChatBotProps) {
   }, [handleSendMessage]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      if (file.size > 10 * 1024 * 1024) { // 10MB
-        toast({ title: "Archivo demasiado grande", description: "El comprobante no debe exceder los 10MB.", variant: "destructive" });
-        return;
-      }
-      setSelectedFile(file);
-      setInputValue(file.name);
-    }
+    // Lógica de archivos (no necesaria para simulación inicial)
   };
 
   const handleFileUpload = () => {
-    if (!selectedFile) return;
-    
-    const reader = new FileReader();
-    reader.onloadend = async () => {
-      const dataUri = reader.result as string;
-      const response = await callBookingAPI('verifyPayment', conversationState.metadata, `Comprobante subido: ${selectedFile.name}`, dataUri);
-      
-      if (response) {
-          addMessage(response.message, true, response.options, response.needsInput, response.inputPlaceholder);
-      }
-
-      setSelectedFile(null);
-      setInputValue('');
-      setIsFileUploadMode(false);
-      if (fileInputRef.current) fileInputRef.current.value = '';
-    };
-    reader.readAsDataURL(selectedFile);
+    // Lógica de archivos (no necesaria para simulación inicial)
   };
 
   const initializeChat = useCallback(async () => {
