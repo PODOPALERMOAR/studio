@@ -11,7 +11,7 @@ import Header from '@/components/layout/header';
 import Footer from '@/components/layout/footer';
 import { useState, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import SimpleChatBot from '@/components/chat/SimpleChatBot';
+import BookingWizard from '@/components/booking/BookingWizard';
 
 export default function HomePage() {
   const [showBookingAssistant, setShowBookingAssistant] = useState(false);
@@ -25,7 +25,6 @@ export default function HomePage() {
   }, []);
 
   useEffect(() => {
-    // Precargar la imagen del chat para una transición más suave
     const img = new (window as any).Image();
     img.src = '/images/hermoso-arbol.jpg';
   }, []);
@@ -111,7 +110,7 @@ export default function HomePage() {
               >
                 <div className="flex items-center justify-between mb-4">
                   <h2 className="text-xl sm:text-2xl font-bold leading-tight tracking-tight text-foreground">
-                    Asistente de Turnos
+                    Reservá tu Turno
                   </h2>
                   <Button 
                     variant="outline" 
@@ -125,7 +124,7 @@ export default function HomePage() {
                 </div>
                 
                 <Card className="w-full flex-grow shadow-lg rounded-xl overflow-hidden border">
-                  <SimpleChatBot />
+                  <BookingWizard />
                 </Card>
               </motion.div>
             )}
